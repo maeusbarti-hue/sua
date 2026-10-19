@@ -1,0 +1,3263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sua Choi — Mini Game World</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh; padding: 16px;
+    user-select: none;
+  }
+  h1 { font-size: 18px; margin-bottom: 8px; letter-spacing: 1px; text-align: center; }
+  #hud {
+    display: flex; gap: 10px; margin-bottom: 8px;
+    font-size: 14px; font-weight: 600;
+    align-items: center; flex-wrap: wrap; justify-content: center;
+  }
+  #hud span { padding: 4px 10px; background: #16213e; border-radius: 6px; }
+  #hud .danger { color: #e94560; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+  .hero-card { display:flex; align-items:center; gap:12px; width:min(768px, 100%); margin:0 0 10px; padding:10px 14px; border:1px solid rgba(255,182,213,.5); border-radius:14px; background:linear-gradient(115deg,#302047,#19233f 68%,#25385b); box-shadow:0 8px 24px rgba(0,0,0,.22); }
+  .hero-portrait { width:76px; height:76px; flex:0 0 76px; border-radius:13px; background:#ffe3f0; overflow:hidden; box-shadow:0 0 0 2px #ffb6d5; }
+  .hero-info { flex:1; min-width:0; }
+  .hero-kicker { color:#ffb6d5; font-size:10px; letter-spacing:2px; font-weight:800; text-transform:uppercase; }
+  .hero-name { color:#fff; font-size:19px; font-weight:800; margin:2px 0; }
+  .hero-desc { color:#d7d8ec; font-size:12px; line-height:1.4; }
+  #btnSuaSkill { border:1px solid #ff9fc9; background:linear-gradient(135deg,#e94d91,#9c5be8); color:white; border-radius:9px; padding:9px 12px; font-weight:800; cursor:pointer; max-width:155px; }
+  #btnSuaSkill:disabled { opacity:.55; cursor:not-allowed; }
+  @media (max-width:560px) { .hero-card { gap:9px; padding:8px; } .hero-portrait { width:60px; height:60px; flex-basis:60px; } .hero-name { font-size:16px; } .hero-desc { font-size:11px; } #btnSuaSkill { max-width:115px; padding:8px; font-size:11px; } }
+  #canvasWrap { position: relative; }
+  canvas {
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    cursor: pointer; display: block;
+  }
+  #shop { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+  .tower-btn {
+    background: #16213e; border: 2px solid #0f3460; color: #eee;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; transition: 0.15s;
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 120px; position: relative;
+  }
+  .tower-btn:hover:not(.disabled) { border-color: #e94560; transform: translateY(-2px); }
+  .tower-btn.selected { border-color: #e94560; background: #0f3460; }
+  .tower-btn.disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .tower-btn .name { font-weight: 600; }
+  .tower-btn .cost { font-size: 12px; color: #ffd166; }
+  .tower-btn .cost.inflated { color: #e94560; }
+  .tower-btn .desc { font-size: 10px; color: #aaa; margin-top: 2px; text-align: center; }
+  .tower-btn .limit-badge {
+    position: absolute; top: -8px; right: -8px;
+    background: #e94560; color: white;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 6px; border-radius: 10px;
+  }
+  #controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+  #controls button {
+    background: #16213e; border: 2px solid #0f3460; color: #eee;
+    padding: 8px 16px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 600;
+  }
+  #controls button:hover:not(:disabled) { border-color: #e94560; }
+  #controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #btnReset { border-color: #e94560; color: #ff6b84; }
+  #btnReset:hover { background: #e94560; color: #fff; }
+
+  #overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 10px; text-align: center; padding: 24px;
+    overflow-y: auto;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 { font-size: 24px; margin-bottom: 10px; }
+  #overlay p { margin-bottom: 14px; color: #ccc; max-width: 600px; line-height: 1.5; font-size: 14px; }
+  #overlay ul { text-align: left; margin: 0 auto 14px; color: #ffd166; font-size: 13px; line-height: 1.7; display: inline-block; }
+  #overlay .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  #overlay button {
+    background: #e94560; border: none; color: white;
+    padding: 12px 24px; font-size: 15px; font-weight: 700;
+    border-radius: 8px; cursor: pointer;
+  }
+  #overlay button.secondary { background: #16213e; border: 2px solid #0f3460; }
+  #overlay button:hover { filter: brightness(1.15); }
+
+  #levelGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 14px 0;
+    max-width: 520px;
+  }
+  .level-cell {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    color: #eee;
+    padding: 10px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    position: relative;
+    transition: 0.15s;
+  }
+  .level-cell:hover:not(.locked) { border-color: #e94560; transform: translateY(-2px); }
+  .level-cell.locked { opacity: 0.35; cursor: not-allowed; }
+  .level-cell.current { border-color: #ffd166; box-shadow: 0 0 12px rgba(255,209,102,0.4); }
+  .level-cell.cleared { background: #1e4d2b; border-color: #7ec850; }
+  .level-cell .stars { font-size: 10px; color: #ffd166; margin-top: 2px; }
+  .level-cell small { display: block; font-size: 8px; color: #aaa; font-weight: 400; margin-top: 2px; }
+
+  #hint { font-size: 12px; color: #888; margin-top: 8px; text-align: center; max-width: 768px; line-height: 1.5; }
+
+  #npBanner {
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(233, 69, 96, 0.9);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+    display: none;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #npBanner.show { display: block; }
+
+  .quote-card {
+    max-width: 560px;
+    margin: 14px auto 8px;
+    padding: 16px 22px;
+    background: linear-gradient(135deg, rgba(255,209,102,0.12), rgba(233,69,96,0.10));
+    border: 1px solid rgba(255,209,102,0.35);
+    border-radius: 12px;
+    text-align: center;
+  }
+  .quote-card .label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #ffd166;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .quote-card .quote {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #f5f5f5;
+  }
+
+
+  #modePicker { position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center; padding:20px; background:radial-gradient(circle at top,#34446c,#111426 70%); }
+  #modePicker.hidden, #rockDuel.hidden { display:none; }
+  .mode-panel { width:min(760px,100%); text-align:center; padding:28px; border:1px solid #6878a8; border-radius:22px; background:#171d35; box-shadow:0 18px 60px #0009; }
+  .mode-panel h2 { font-size:clamp(24px,4vw,36px); margin-bottom:8px; color:#fff; }
+  .mode-panel p { color:#cbd2eb; margin-bottom:22px; line-height:1.5; }
+  .mode-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .mode-card { border:2px solid #465985; border-radius:16px; background:linear-gradient(145deg,#253657,#1a2039); color:#fff; padding:22px 16px; cursor:pointer; text-align:center; }
+  .mode-card:hover { border-color:#ffd166; transform:translateY(-2px); }
+  .mode-card .mode-icon { font-size:42px; display:block; margin-bottom:10px; }
+  .mode-card strong { display:block; font-size:19px; margin-bottom:7px; }
+  .mode-card small { color:#c6cce2; line-height:1.5; font-size:12px; }
+  #rockDuel { width:min(850px,100%); margin:12px auto; padding:16px; border:1px solid #62709b; border-radius:16px; background:#161d33; box-shadow:0 10px 32px #0005; }
+  #duelCanvas { width:100%; height:auto; background:#cbe7fa; border-radius:10px; display:block; }
+  .duel-hud { display:flex; justify-content:space-between; gap:12px; margin:10px 0; font-weight:800; }
+  .duel-health { flex:1; background:#303a55; border-radius:8px; overflow:hidden; height:22px; border:1px solid #69799d; }
+  .duel-health-fill { height:100%; background:linear-gradient(90deg,#65d681,#20a75a); transition:width .2s; }
+  #opponentHealthFill { background:linear-gradient(90deg,#ff8b8b,#e94560); }
+  .duel-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:14px; margin-top:14px; }
+  .duel-controls { color:#dfe6ff; }
+  .drag-instructions { display:block; flex-basis:100%; padding:4px 0; font-size:14px; }
+  .duel-controls button, #duelBack { border:0; border-radius:9px; padding:10px 16px; background:#e94560; color:#fff; font-weight:800; cursor:pointer; }
+  #duelBack { background:#263452; border:1px solid #58698f; }
+  #duelCanvas { touch-action:none; cursor:grab; user-select:none; }
+  #duelCanvas.dragging { cursor:grabbing; }
+  #duelMessage { min-height:24px; margin:12px 0 0; text-align:center; color:#ffe2a2; font-weight:700; }
+  @media(max-width:520px) { .mode-options { grid-template-columns:1fr; } .mode-panel { padding:20px 14px; } #rockDuel { padding:8px; } .duel-controls label { min-width:125px; } }
+  #languageToggle { position:fixed; top:10px; right:12px; z-index:10000; border:1px solid #ff9fc9; border-radius:10px; padding:9px 12px; color:#fff; background:#352047; font-weight:700; cursor:pointer; box-shadow:0 3px 12px #0005; }
+
+  #mazeGame { width:min(900px,100%); margin:12px auto; padding:16px; border:1px solid #ff9fc9; border-radius:18px; background:linear-gradient(145deg,#171d35,#292044); box-shadow:0 12px 36px #0007; }
+  #mazeGame.hidden {display:none}
+  .maze-top {display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+  .maze-stats {display:flex;gap:8px;flex-wrap:wrap}.maze-stats span {background:#352047;padding:7px 10px;border-radius:9px;font-weight:700;color:#ffe3f0}
+  #mazeCanvas {display:block;width:100%;height:auto;max-height:65vh;border-radius:12px;background:#1e2a1a;border:5px solid #4E6227;touch-action:none; cursor:pointer}
+  .maze-actions,.maze-pad {display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .maze-actions button,.maze-pad button {border:1px solid #a56cc2;background:#38264f;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800;cursor:pointer}
+  .maze-pad {display:grid;grid-template-columns:repeat(3,52px);gap:8px; justify-content:center; margin:14px auto}
+  .maze-pad button {padding:12px 0;font-size:22px; min-width:52px; min-height:52px}
+  .maze-pad .empty { visibility:hidden }
+  #mazeMessage {text-align:center;color:#ffd6e8;min-height:24px;margin-top:10px;font-weight:700}
+  #mazeLevels {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:12px 0}
+  #mazeLevels button {background:#252b49;color:#fff;border:1px solid #59658b;border-radius:8px;padding:8px 4px;cursor:pointer}
+  #mazeLevels button:disabled {opacity:.35;cursor:not-allowed}
+  @media(max-width:520px){#mazeGame{padding:9px}.maze-top{justify-content:center}#mazeLevels{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+
+  /* Responsive layout polish for all three games */
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{padding:clamp(8px,2vw,22px)}
+  #game,#duelCanvas,#mazeCanvas{display:block;width:100%;height:auto;max-width:100%}
+  #canvasWrap,#shop,#controls,#hint,#hud,.hero-card,#title{width:min(100%,1000px);margin-left:auto;margin-right:auto}
+  #rockDuel,#mazeGame{width:min(100%,1000px);min-width:0}
+  #shop,#controls,.duel-controls,.maze-actions{flex-wrap:wrap}
+  button{touch-action:manipulation}
+  #modePicker{overflow-y:auto;align-items:center}
+  .mode-panel{max-height:calc(100dvh - 24px);overflow-y:auto}
+  @media(max-width:700px){
+    body{padding:8px}
+    .mode-panel{padding:16px 12px}
+    .mode-options{grid-template-columns:1fr;gap:9px}
+    .mode-card{padding:13px 12px}
+    .mode-card .mode-icon{font-size:30px;margin-bottom:4px}
+    .mode-card strong{font-size:16px}
+    .mode-card small{font-size:12px}
+    #title{font-size:clamp(20px,5vw,30px);line-height:1.2}
+    .hero-card{flex-wrap:wrap}
+    #hud{gap:6px;flex-wrap:wrap}
+    #shop button,#controls button,.maze-actions button{flex:1 1 120px}
+    #rockDuel,#mazeGame{padding:9px;margin:8px auto}
+    .duel-hud{gap:8px;font-size:13px}
+    .duel-health{height:18px}
+    .drag-instructions{font-size:12px}
+    #mazeCanvas{max-height:54dvh;object-fit:contain}
+    .maze-top{align-items:flex-start;gap:8px}
+    .maze-top h1{font-size:clamp(20px,5vw,28px)}
+    .maze-stats{width:100%;gap:5px}
+    .maze-stats span{flex:1;text-align:center;padding:6px 4px;font-size:12px}
+    .maze-pad{grid-template-columns:repeat(3,48px);gap:6px}
+    .maze-pad button{min-height:48px;padding:9px 0}
+    #languageToggle{top:5px;right:5px;padding:6px 8px;font-size:12px}
+  }
+  @media(max-width:380px){#mazeLevels{grid-template-columns:repeat(5,minmax(0,1fr))}#mazeLevels button{font-size:10px;padding:7px 1px}}
+
+
+  .maze-draw-hint{margin:10px 2px;color:#f4dff5;font-size:14px;line-height:1.5;text-align:center}
+
+  /* ---- Touch/mobile compatibility ---- */
+  #game{touch-action:manipulation}
+  #game,#mazeCanvas{-webkit-tap-highlight-color:transparent}
+
+  /* ---- A Letter for Sua ---- */
+  #letterGame{width:min(700px,100%);margin:12px auto}
+  #letterGame.hidden{display:none}
+  .letter-paper{position:relative;background:linear-gradient(160deg,#fff8ec,#ffeeda);color:#4a3b32;border-radius:16px;padding:32px 36px 26px;box-shadow:0 14px 40px #0007,inset 0 0 60px rgba(214,178,120,.25);border:1px solid #e8d3ae;animation:letterIn .45s ease}
+  @keyframes letterIn{from{transform:translateY(14px) scale(.97);opacity:0}}
+  .letter-paper h1{color:#8a4a6d;font-family:Georgia,'Times New Roman',serif;font-size:22px}
+  .letter-greeting{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:18px;margin:14px 0 10px;color:#6b4a3a}
+  .letter-body p{font-family:Georgia,'Times New Roman',serif;font-size:14.5px;line-height:1.75;margin:0 0 10px}
+  .letter-sign{font-family:Georgia,'Times New Roman',serif;font-style:italic;text-align:right;color:#8a4a6d;font-size:15px;margin-top:14px}
+  .letter-seal{position:absolute;top:-18px;right:22px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 35% 30%,#ff8cb8,#e3437f);border-radius:50%;box-shadow:0 4px 10px #0005,inset 0 -3px 6px #0003;font-size:22px}
+  .letter-actions{display:flex;justify-content:center;margin-top:16px}
+  .letter-actions button{border:0;border-radius:9px;padding:10px 16px;background:#a5426e;color:#fff;font-weight:800;cursor:pointer}
+  @media (max-width:520px){.letter-paper{padding:22px 18px}.letter-greeting{font-size:16px}.letter-paper h1{font-size:19px}}
+
+</style>
+</head>
+<body>
+<button id="languageToggle" type="button" aria-label="Switch game language">🇰🇷 한국어</button>
+
+<div id="modePicker" role="dialog" aria-modal="true" aria-labelledby="modeTitle">
+  <div class="mode-panel">
+    <h2 id="modeTitle">✨ Choose Your Game</h2>
+    <p id="modeDesc">Welcome to Sua Choi’s little game world. Pick a game to play.</p>
+    <div class="mode-options">
+      <button class="mode-card" id="chooseDefense"><span class="mode-icon">🏰</span><strong>Sua’s Tower Defense</strong><small>Enemies are marching on Princess Sua’s tower! Build towers, hold every wave, and unleash Sua’s Starburst.</small></button>
+      <button class="mode-card" id="chooseMaze"><span class="mode-icon">🧭</span><strong>Sua’s Maze Adventure</strong><small>Guide heroine Sua Choi through 10 colorful mazes, collect stars, and find the glowing exit.</small></button>
+      <button class="mode-card" id="chooseDuel"><span class="mode-icon">🪨</span><strong>Sua’s Rock Duel</strong><small>Drag the rock back like a slingshot, then release to throw! Hit your rival until their HP reaches zero!</small></button>
+      <button class="mode-card" id="chooseLetter"><span class="mode-icon">💌</span><strong>A Letter for Sua</strong><small>Take a quiet moment — open the sealed letter written just for Princess Sua.</small></button>
+    </div>
+  </div>
+</div>
+<div id="rockDuel" class="hidden">
+  <h1>🪨 Sua’s Rock Duel</h1>
+  <div class="duel-hud">
+    <div style="flex:1"><span id="duelSuaLabel">Sua</span> <span id="playerHpText">100</span> HP<div class="duel-health"><div id="playerHealthFill" class="duel-health-fill" style="width:100%"></div></div><small><span class="throwsLeftLabel">Throws left:</span> <span id="playerThrowsText">8</span></small></div>
+    <div style="flex:1;text-align:right"><span id="duelRivalLabel">Rival</span> <span id="opponentHpText">100</span> HP<div class="duel-health"><div id="opponentHealthFill" class="duel-health-fill" style="width:100%"></div></div><small><span class="throwsLeftLabel">Throws left:</span> <span id="opponentThrowsText">8</span></small></div>
+  </div>
+  <canvas id="duelCanvas" width="1800" height="390" aria-label="Rock throwing duel field"></canvas>
+  <div class="duel-controls">
+    <strong class="drag-instructions">🪨 Click/touch the rock, drag it backward, then release!</strong>
+    <button id="duelRestart" type="button">↻ Restart Duel</button>
+    <button id="duelBack" type="button">← Game Selection</button>
+  </div>
+  <p id="duelMessage" aria-live="polite">Drag the rock back and release. A longer pull throws harder; the pull angle sets the arc.</p>
+</div>
+
+
+<div id="mazeGame" class="hidden">
+  <div class="maze-top">
+    <div><h1>🧭 Sua Choi: Maze Adventure</h1><p id="mazeSubtitle" style="color:#d8c7ef;font-size:13px;margin-top:4px">Help Sua find the portal! Every level is a labyrinth full of tricky dead ends.</p></div>
+    <div class="maze-stats"><span>🌸 <span id="mazeLevelLabel">Level</span> <b id="mazeLevelText">1 / 10</b></span><span>⭐ <span id="mazeStarsLabel">Stars</span> <b id="mazeStars">0</b></span><span>⏱ <b id="mazeTime">0:00</b></span></div>
+  </div>
+  <div id="mazeLevels" aria-label="Maze level selection"></div>
+  <canvas id="mazeCanvas" width="840" height="600" aria-label="Sua's maze. Use arrow buttons or swipe to navigate."></canvas>
+  <p class="maze-draw-hint" id="mazeHint">🎮 Use the arrow buttons below (or swipe / arrow keys) to guide Sua through the labyrinth. Reach the glowing portal to win!</p>
+  <div class="maze-pad" aria-label="Movement controls">
+    <span class="empty"></span>
+    <button id="btnUp" type="button" aria-label="Move up">↑</button>
+    <span class="empty"></span>
+    <button id="btnLeft" type="button" aria-label="Move left">←</button>
+    <button id="btnDown" type="button" aria-label="Move down">↓</button>
+    <button id="btnRight" type="button" aria-label="Move right">→</button>
+  </div>
+  <div class="maze-actions"><button id="mazeRestart">↻ Restart level</button><button id="mazeBack">← Game selection</button><button id="mazeNext">Next level →</button></div>
+  <div id="mazeMessage" aria-live="polite">Use the arrows to navigate. Find the glowing portal!</div>
+</div>
+
+<div id="letterGame" class="hidden">
+  <div class="letter-paper">
+    <div class="letter-seal">💌</div>
+    <h1 id="letterHeading">💌 A Letter for Sua</h1>
+    <p class="letter-greeting" id="letterGreeting">Dear Princess Sua,</p>
+    <div class="letter-body" id="letterBody"></div>
+    <p class="letter-sign" id="letterSign">— Your loyal guardian, in every world ✨</p>
+    <div class="letter-actions"><button id="letterBack" type="button">← Game selection</button></div>
+  </div>
+</div>
+
+<h1 id="title">🏰 Sua’s Tower Defense — Sua Choi’s Kingdom</h1>
+<div class="hero-card" aria-label="Sua Choi, your heroine">
+  <svg class="hero-portrait" viewBox="0 0 100 100" role="img" aria-label="Cute anime illustration of Sua, an original Korean girl character">
+    <defs><linearGradient id="bgSua" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd6e8"/><stop offset="1" stop-color="#c8b8ff"/></linearGradient><linearGradient id="hairSua" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3a244b"/><stop offset="1" stop-color="#171b35"/></linearGradient></defs>
+    <rect width="100" height="100" rx="14" fill="url(#bgSua)"/><circle cx="78" cy="20" r="10" fill="#fff5b8" opacity=".9"/><path d="M17 100 Q17 69 35 67 L66 67 Q86 73 88 100" fill="#f35c9c"/><path d="M25 47 Q15 10 48 9 Q82 5 80 44 L76 71 L25 70Z" fill="url(#hairSua)"/><path d="M31 38 Q31 20 49 20 Q69 20 70 41 L66 60 Q61 75 49 75 Q35 72 31 57Z" fill="#ffd8c8"/><path d="M28 42 Q25 13 49 12 Q73 12 76 38 L66 32 L58 24 Q47 38 29 42Z" fill="url(#hairSua)"/><path d="M30 39 Q19 45 26 63 L33 65 L35 43 M69 37 Q83 47 74 63 L68 65Z" fill="#30203f"/><ellipse cx="40" cy="48" rx="4" ry="5" fill="#302047"/><ellipse cx="59" cy="48" rx="4" ry="5" fill="#302047"/><circle cx="41" cy="46" r="1.5" fill="white"/><circle cx="60" cy="46" r="1.5" fill="white"/><path d="M44 60 Q50 66 57 60" fill="none" stroke="#c85a78" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="34" cy="57" rx="5" ry="2.5" fill="#ff8caf" opacity=".7"/><ellipse cx="65" cy="57" rx="5" ry="2.5" fill="#ff8caf" opacity=".7"/><path d="M36 70 L49 81 L63 70 L70 100 L28 100Z" fill="#fff0f6"/><path d="M37 71 L49 81 L61 71 L57 100 L42 100Z" fill="#ff76b4"/><path d="M29 31 Q19 25 26 18 Q34 13 38 24Z" fill="#ff7db7"/><path d="M26 22 L34 23 L29 30Z" fill="#ffe6f2"/>
+  </svg>
+  <div class="hero-info"><div class="hero-kicker">Your heroine · 수아</div><div class="hero-name">Sua Choi ✨</div><div class="hero-desc">A brave, cheerful guardian. Her Starburst magic weakens every enemy on the battlefield.</div></div>
+  <button id="btnSuaSkill" type="button">✨ Starburst<br><small>Ready</small></button>
+</div>
+
+<div id="hud">
+  <span>🏰 <span id="livesLabel">Sua</span> ❤️ <span id="lives">15</span></span>
+  <span>💰 <span id="gold">100</span></span>
+  <span>🏗️ <span id="towerCount">0</span>/<span id="towerMax">3</span></span>
+  <span>🌊 <span id="wave">0</span>/5</span>
+  <span id="npSpan">⚠️ <span id="np">0</span>/<span id="npMax">5</span></span>
+</div>
+
+<div id="canvasWrap">
+  <canvas id="game" width="768" height="480"></canvas>
+  <div id="npBanner">⚠️ Negative Points!</div>
+  <div id="overlay" class="hidden">
+    <h2 id="overlayTitle">Title</h2>
+    <p id="overlayText">Text</p>
+    <div id="overlayExtra"></div>
+    <ul id="overlayList" class="hidden"></ul>
+    <div class="btn-row" id="overlayBtns">
+      <button id="overlayBtn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div id="shop">
+  <button class="tower-btn" data-type="archer">
+    <span>🏹</span>
+    <span class="name">Archer</span>
+    <span class="cost" data-base="50">50 gold</span>
+    <span class="desc">Fast • single target</span>
+    <span class="limit-badge">0</span>
+  </button>
+  <button class="tower-btn" data-type="cannon">
+    <span>💣</span>
+    <span class="name">Cannon</span>
+    <span class="cost" data-base="100">100 gold</span>
+    <span class="desc">Slow • splash damage</span>
+    <span class="limit-badge">0</span>
+  </button>
+  <button class="tower-btn" data-type="frost" style="display:none;">
+    <span>❄️</span>
+    <span class="name">Frost</span>
+    <span class="cost" data-base="75">75 gold</span>
+    <span class="desc">Slows enemies</span>
+    <span class="limit-badge">0</span>
+  </button>
+</div>
+
+<div id="controls">
+  <button id="btnPause">⏸ Pause</button>
+  <button id="btnSpeed">▶ 1x</button>
+  <button id="btnReset">🔄 Reset Level</button>
+  <button id="btnMenu">☰ Level Select</button>
+  <button id="btnBackToMenu" style="border-color:#ff9fc9;color:#ffb6d5;">⬅ Game Selection</button>
+</div>
+<div id="hint">Click a tower, then click a glowing green tile. Waves come automatically. Watch your <strong>⚠️ NP</strong> — 5 and it's over.</div>
+
+<script>
+// ============================================================
+// I18N — English / 한국어 language system + toggle switch
+// (fix: the language button previously had no JavaScript at all)
+// ============================================================
+(() => {
+  const STRINGS = {
+    en: {
+      docTitle: 'Sua Choi — Mini Game World',
+      toggleLabel: '🇰🇷 한국어',
+      toggleAria: 'Switch game language',
+      modeTitle: '✨ Choose Your Game',
+      modeDesc: 'Welcome to Sua Choi’s little game world. Pick a game to play.',
+      cardDefenseTitle: 'Sua’s Tower Defense',
+      cardDefenseDesc: 'Enemies are marching on Princess Sua’s tower! Build towers, hold every wave, and unleash Sua’s Starburst.',
+      cardMazeTitle: 'Sua’s Maze Adventure',
+      cardMazeDesc: 'Guide heroine Sua Choi through 10 colorful mazes, collect stars, and find the glowing exit.',
+      cardDuelTitle: 'Sua’s Rock Duel',
+      cardDuelDesc: 'Drag the rock back like a slingshot, then release to throw! Hit your rival until their HP reaches zero!',
+      cardLetterTitle: 'A Letter for Sua',
+      cardLetterDesc: 'Take a quiet moment — open the sealed letter written just for Princess Sua.',
+      letterHeading: '💌 A Letter for Sua',
+      letterGreeting: 'Dear Princess Sua,',
+     "letterParas": [
+    "Life is never going to be easy. It is made of sorrow and happiness—and if we are honest, sorrow often takes the larger share. That is not pessimism; it is simply the truth of being alive.",
+    "But here is what I want you to remember: it is you who decides what your sorrows become. The same pain that crushes one person can strengthen another. The difference is not the pain—it is the choice.",
+    "So this year, when hardship comes—and it will—don't ask, \"Why me?\" Ask, \"What is this making of me?\" Let your sorrows be a forge, not a grave. Let them teach you patience, deepen your compassion, and prove your resilience. Endurance is bravery, and every wound you carry with dignity becomes a quiet kind of strength.",
+    "And when happiness comes—because it will too—receive it fully. Don't let the fear of losing it steal the joy of having it. Sorrow and joy are both teachers; one teaches you to endure, the other teaches you to be grateful.",
+    "Happy birthday, dear Sua. May this year make you stronger, not harder. May your sorrows shape you without breaking you—and may you always remember that the choice is yours."
+  ],
+      letterSign: '— Your Friend, E-K ✨',
+      letterBack: '← Game selection',
+      duelHeading: '🪨 Sua’s Rock Duel',
+      duelSua: 'Sua', duelRival: 'Rival', throwsLeft: 'Throws left:',
+      duelDragInstructions: '🪨 Click/touch the rock, drag it backward, then release!',
+      duelRestart: '↻ Restart Duel', duelBack: '← Game Selection',
+      duelAimDefault: 'Drag the rock back and release. A longer pull throws harder; the pull angle sets the arc.',
+      duelCanvasAria: 'Rock throwing duel field',
+      duelResetMsg: 'The arena is extra-wide now. Drag the rock farther back to build enough power to reach the distant rival; adjust your angle carefully.',
+      duelThrowing: n => `Sua throws! ${n} throws remaining.`,
+      duelLiningUp: 'The rival is lining up a throw…',
+      duelKeepDragging: 'Keep dragging backward to aim; release to throw!',
+      duelPullMore: 'Pull the rock farther back before releasing.',
+      duelHitYou: d => `Direct hit! You dealt ${d} damage!`,
+      duelHitMe: d => `The rival hit you for ${d} damage!`,
+      duelMissYou: 'Miss! Try a different pull angle or power.',
+      duelMissRival: 'The rival missed! Your turn.',
+      duelVictory: 'Victory! Sua wins the duel!',
+      duelDefeat: 'Defeat! The rival wins the duel.',
+      duelDraw: 'Draw! Both fighters survived all 8 throws.',
+      duelWinHP: 'Victory! Sua wins on remaining HP!',
+      duelLoseHP: 'Defeat! The rival wins on remaining HP.',
+      canvasSua: 'SUA', canvasRival: 'RIVAL',
+      canvasSuaWins: 'SUA WINS!', canvasRivalWins: 'RIVAL WINS!',
+      canvasRestartHint: 'Restart the duel to play again',
+      mazeHeading: '🧭 Sua Choi: Maze Adventure',
+      mazeSubtitle: 'Help Sua find the portal! Every level is a labyrinth full of tricky dead ends.',
+      mazeLevelLabel: 'Level', mazeStarsLabel: 'Stars',
+      mazeHint: '🎮 Use the arrow buttons below (or swipe / arrow keys) to guide Sua through the labyrinth. Reach the glowing portal to win!',
+      mazeRestart: '↻ Restart level', mazeBack: '← Game selection', mazeNext: 'Next level →',
+      mazeInitialMsg: 'Use the arrows to navigate. Find the glowing portal!',
+      mazeCanvasAria: 'Sua\'s maze. Use arrow buttons or swipe to navigate.',
+      mazeLevelsAria: 'Maze level selection',
+      mazePadAria: 'Movement controls',
+      ariaUp: 'Move up', ariaDown: 'Move down', ariaLeft: 'Move left', ariaRight: 'Move right',
+      mazeNavMsg: 'Use the arrow buttons (or swipe / arrow keys) to navigate the labyrinth. Find the glowing portal!',
+      mazeLevelDone: '✨ Level complete! Press Next level to continue.',
+      mazeAllDone: '🏆 Sua conquered all 10 mazes!',
+      canvasLevelCleared: 'LEVEL CLEARED!', canvasMazeMaster: '🎉 MAZE MASTER!',
+      canvasStarKingdom: 'Sua saved the Star Kingdom!', canvasWellDone: 'Beautiful work, Sua! ✨',
+      mazeNames: ['Candy Garden','Moonlit Library','Crystal Cavern','Cherry Blossom Park','Cloud Kingdom','Sunset Ruins','Misty Forest','Frozen Palace','Starlight Temple','Queen’s Labyrinth'],
+      tdDocTitle: 'Sua’s Tower Defense — Sua Choi',
+      tdTitle: (n, name) => `🏰 Sua’s Tower Defense — Level ${n}: ${name}`,
+      suaLivesLabel: 'Sua',
+      heroKicker: 'Your princess · 수아', heroName: 'Princess Sua Choi ✨',
+      heroDesc: 'The beloved princess of the Star Kingdom. Enemy hordes march on her tower every wave — build your defenses and protect her!',
+      skillName: 'Starburst', skillReady: 'Ready', skillReadyNow: 'Ready!', secSuffix: 's',
+      npBanner: '⚠️ Negative Points!', npFallback: '⚠️ Negative Point!',
+      npLeak: 'Enemy leaked: +1 NP', npEarlySell: 'Early sell: +1 NP', npInvalidTile: 'Invalid tile: +1 NP',
+      gold: 'gold',
+      tower_archer: 'Archer', tower_cannon: 'Cannon', tower_frost: 'Frost',
+      desc_archer: 'Fast • single target', desc_cannon: 'Slow • splash damage', desc_frost: 'Slows enemies',
+      pause: '⏸ Pause', resume: '▶ Resume',
+      resetLevel: '🔄 Reset Level', levelSelect: '☰ Level Select', backToGames: '⬅ Game Selection',
+      hintHTML: 'Tap (or click) a tower, then tap a glowing green tile. Waves come automatically. Watch your <strong>⚠️ NP</strong> — 5 and it\'s over.',
+      mercyTitle: '⚠️ 5 Negative Points!',
+      mercyTextReset: 'One chance to reset the wave. You\'ll restart at 3 NP.',
+      mercyTextNoReset: 'Too many mistakes.',
+      mercyResetWave: '🔁 Reset Wave', mercyGiveUp: '💀 Give Up & Restart', mercyRestartLevel: '🔄 Restart Level',
+      breathFirstWave: 'First wave', breathReset: 'Wave reset',
+      breathIncoming: n => `Wave ${n} incoming`,
+      breathBar: (label, s) => `⏱️ ${label} in ${s}s — build now!`,
+      buildCd: x => `🔨 Build cooldown: ${x}s`,
+      selectTitle: '☰ Level Select — Sua Choi',
+      selectText: n => `All ${n} levels unlocked — choose any level`,
+      backToGame: '↩ Back to Game',
+      introTitle: (n, name) => `Level ${n}: ${name}`,
+      introText: 'Enemy hordes are attacking Princess Sua’s tower! Build your defenses and protect her until every wave is defeated.',
+      introBegin: '▶ Begin',
+      introGold: g => `💰 Gold: ${g}`, introLives: l => `❤️ Sua’s hearts: ${l}`, introWaves: w => `🌊 Waves: ${w}`,
+      introPrep: s => `⏱️ ${s}s prep before wave 1`,
+      introTower: n => `🔓 New tower unlocked: ${n}`,
+      completeTitle: '✅ Level Complete!',
+      campaignTitle: '🏆 CAMPAIGN COMPLETE — Sua Choi Wins!',
+      completeText: (lives, np) => `Wave cleared with ${lives} lives and ${np} NP.`,
+      starsEarned: s => `Stars earned: ${s}`, livesRemaining: l => `Sua’s hearts remaining: ${l}`, npCount: n => `Negative Points: ${n}`,
+      quoteLabel: '✦ Words for Sua Choi ✦',
+      nextLevel: '➡ Next Level', playAgain: '🏆 Play Again',
+      loseTitle: '💀 Level Failed', loseDefault: 'Princess Sua’s tower has fallen. The kingdom needs you to try again!',
+      retryLevel: '🔄 Retry Level',
+      resetConfirmTitle: '🔄 Reset Level?',
+      resetConfirmText: 'Restart this level from scratch. Towers, gold, and progress will be lost.',
+      resetConfirmYes: '🔄 Yes, Reset', resetConfirmCancel: '↩ Cancel',
+      tdNames: ['Tutorial Plains','Winding Path','Twin Roads','Mountain Pass','Forest Clearing','River Crossing','Fortress Walls','Swamp Trail','Desert Dunes','Frozen Lake','Volcano Ridge','Underground Cave','Sky Bridge','Crystal Caverns','Ruined City','Haunted Woods','Dragon\'s Peak','Void Rift','Celestial Gate','The Final Stand'],
+      quotes: [
+        'Patience is of two kinds: patience over what pains you, and patience against what you desire.',
+        'Do not let your difficulties fill you with anxiety, for after the darkest night comes the brightest day.',
+        'He who has a thousand friends has not a friend to spare, and he who has one enemy will meet him everywhere.',
+        'The best kind of wealth is that which comes after effort.',
+        'Do not be a slave of others, for God has created you free.',
+        'The value of a person is what he knows and does.',
+        'A wise man first thinks and then speaks.',
+        'Have love for your friend up to a limit, for it is possible that he may turn into your enemy some day; and hate your enemy up to a limit, for it is possible that he may turn into your friend some day.',
+        'The tongue is a beast — if you let it loose, it will bite you.',
+        'Your remedy is within you, but you do not sense it. Your sickness is from you, but you do not perceive it.',
+        'Be like a flower that gives its fragrance even to the hand that crushes it.',
+        'Nothing is more useful to a person than good manners.',
+        'The greatest wealth is the richness of the soul.',
+        'Whoever loves us, let him prepare for poverty.',
+        'There is no rest for the seeker until he reaches the sought.',
+        'Do not be misled by the darkness of the path; the light of your destination is bright.',
+        'The world is a place of passage, not a place of residence.',
+        'He who understands himself understands his Lord.',
+        'Trust in God, but tie your camel first.',
+        'The journey of a thousand miles begins with a single step — and yours ends here today. Well done, Sua.'
+      ]
+    },
+    ko: {
+      docTitle: '수아 최 — 미니 게임 월드',
+      toggleLabel: '🇺🇸 English',
+      toggleAria: '게임 언어 전환',
+      modeTitle: '✨ 게임을 선택하세요',
+      modeDesc: '수아 최의 작은 게임 세계에 오신 것을 환영해요. 플레이할 게임을 골라 보세요.',
+      cardDefenseTitle: '수아의 타워 디펜스',
+      cardDefenseDesc: '적들이 공주 수아의 탑으로 진군하고 있어요! 타워를 쌓아 모든 웨이브를 막고, 스타버스트 마법을 활용하세요.',
+      cardMazeTitle: '수아의 미로 모험',
+      cardMazeDesc: '주인공 수아 최와 함께 10개의 형형색색 미로를 탐험하고, 별을 모으고, 반짝이는 출구를 찾아보세요.',
+      cardDuelTitle: '수아의 돌 던지기 대결',
+      cardDuelDesc: '새총처럼 돌을 뒤로 끌었다가 놓아서 던지세요! 라이벌을 맞혀 체력(HP)을 0으로 만들면 이겨요!',
+      cardLetterTitle: '수아에게 보내는 편지',
+      cardLetterDesc: '잠시 마음을 담아 — 공주 수아에게만 쓴 봉인된 편지를 열어 보세요.',
+      letterHeading: '💌 수아에게 보내는 편지',
+      letterGreeting: '사랑하는 공주 수아에게,',
+   
+  "letterParas": [
+    "인생은 결코 쉽지 않을 거야. 슬픔과 기쁨으로 이루어져 있지—그리고 솔직히 말하면, 슬픔이 더 큰 몫을 차지할 때가 많아. 그건 비관이 아니야. 그저 살아 있다는 것의 진실일 뿐이지.",
+    "그런데 네가 꼭 기억했으면 하는 게 있어. 네 슬픔이 무엇이 될지를 결정하는 건 바로 너라는 거야. 어떤 사람을 짓누르는 같은 고통이 다른 사람을 강하게 만들기도 해. 차이를 만드는 건 고통이 아니라 선택이야.",
+    "그러니 올해, 힘든 일이 닥치거든—분명 닥칠 거야—'왜 나에게?'라고 묻지 마. '이게 나를 무엇으로 만들고 있지?'라고 물어. 네 슬픔이 무덤이 아니라 용광로가 되게 해. 슬픔이 너에게 인내를 가르치고, 연민을 깊게 하고, 너의 회복력을 증명하게 해. 견디는 것은 용기야. 그리고 품위를 지니고 짊어지는 모든 상처는 조용한 힘이 돼.",
+    "그리고 행복이 찾아오거든—그것도 분명 올 거야—온전히 받아들여. 잃을까 봐 두려워하다가 가지고 있는 기쁨을 빼앗기지 마. 슬픔과 기쁨은 둘 다 스승이야. 하나는 견디는 법을, 다른 하나는 감사하는 법을 가르쳐 주지.",
+    "생일 축하해, Sua. 올해가 너를 더 강하게 만들되, 더 딱딱하게 만들지는 않기를. 네 슬픔이 너를 부수지 않고 빚어내기를—그리고 그 선택이 언제나 네 손에 있다는 걸 잊지 않기를."
+  ],
+
+      "letterSign": "— 네 친구, E-K ✨",
+      letterBack: '← 게임 선택',
+      duelHeading: '🪨 수아의 돌 던지기 대결',
+      duelSua: '수아', duelRival: '라이벌', throwsLeft: '남은 던지기:',
+      duelDragInstructions: '🪨 돌을 클릭/터치해서 뒤로 끈 다음, 놓아서 던지세요!',
+      duelRestart: '↻ 대결 다시 시작', duelBack: '← 게임 선택',
+      duelAimDefault: '돌을 뒤로 끌었다가 놓으세요. 세게 끌수록 더 세게 날아가고, 끄는 각도가 포물선을 결정해요.',
+      duelCanvasAria: '돌 던지기 대결 필드',
+      duelResetMsg: '아레나가 훨씬 넓어졌어요. 먼 라이벌에게 닿을 만큼 힘을 모으려면 돌을 더 세게 끌어당기고, 각도도 신중하게 조정하세요.',
+      duelThrowing: n => `수아가 던져요! 남은 횟수: ${n}번`,
+      duelLiningUp: '라이벌이 던지기를 준비하고 있어요…',
+      duelKeepDragging: '뒤로 계속 끌어서 조준하고, 놓아서 던지세요!',
+      duelPullMore: '놓기 전에 돌을 더 세게 뒤로 끌어당기세요.',
+      duelHitYou: d => `직격! ${d}의 피해를 입혔어요!`,
+      duelHitMe: d => `라이벌에게 ${d}의 피해를 입었어요!`,
+      duelMissYou: '빗나갔어요! 다른 각도나 세기로 다시 시도해 보세요.',
+      duelMissRival: '라이벌이 빗나갔어요! 이번엔 당신 차례예요.',
+      duelVictory: '승리! 수아가 대결에서 이겼어요!',
+      duelDefeat: '패배! 라이벌이 대결에서 이겼어요.',
+      duelDraw: '무승부! 두 선수가 모두 8번의 던지기를 버텼어요.',
+      duelWinHP: '승리! 남은 HP로 수아가 이겼어요!',
+      duelLoseHP: '패배! 남은 HP로 라이벌이 이겼어요.',
+      canvasSua: '수아', canvasRival: '라이벌',
+      canvasSuaWins: '수아 승리!', canvasRivalWins: '라이벌 승리!',
+      canvasRestartHint: '대결을 다시 시작해 보세요',
+      mazeHeading: '🧭 수아 최: 미로 모험',
+      mazeSubtitle: '수아가 포탈을 찾도록 도와주세요! 각 레벨은 함정 같은 막다른 길이 가득한 미로입니다.',
+      mazeLevelLabel: '레벨', mazeStarsLabel: '별',
+      mazeHint: '🎮 아래 화살표 버튼(또는 스와이프 / 방향키)으로 수아를 미로 안으로 안내하세요. 반짝이는 포탈에 도착하면 승리!',
+      mazeRestart: '↻ 레벨 다시 시작', mazeBack: '← 게임 선택', mazeNext: '다음 레벨 →',
+      mazeInitialMsg: '화살표로 미로를 탐험하세요. 반짝이는 포탈을 찾아보세요!',
+      mazeCanvasAria: '수아의 미로. 화살표 버튼이나 스와이프로 이동하세요.',
+      mazeLevelsAria: '미로 레벨 선택',
+      mazePadAria: '이동 버튼',
+      ariaUp: '위로 이동', ariaDown: '아래로 이동', ariaLeft: '왼쪽으로 이동', ariaRight: '오른쪽으로 이동',
+      mazeNavMsg: '화살표 버튼(또는 스와이프 / 방향키)으로 미로를 탐험하세요. 반짝이는 포탈을 찾으세요!',
+      mazeLevelDone: '✨ 레벨 완료! 다음 레벨을 눌러 계속하세요.',
+      mazeAllDone: '🏆 수아가 10개의 미로를 모두 정복했어요!',
+      canvasLevelCleared: '레벨 클리어!', canvasMazeMaster: '🎉 미로 마스터!',
+      canvasStarKingdom: '수아가 별왕국을 구했어요!', canvasWellDone: '정말 잘했어요, 수아! ✨',
+      mazeNames: ['캔디 정원','달빛 도서관','수정 동굴','벚꽃 공원','구름 왕국','노을 유적','안개 숲','얼음 궁전','별빛 신전','여왕의 미로'],
+      tdDocTitle: '수아의 타워 디펜스 — 수아 최',
+      tdTitle: (n, name) => `🏰 수아의 타워 디펜스 — 레벨 ${n}: ${name}`,
+      suaLivesLabel: '수아',
+      heroKicker: '공주 · 수아', heroName: '공주 수아 최 ✨',
+      heroDesc: '별왕국의 사랑받는 공주예요. 매 웨이브마다 적 무리가 공주의 탑으로 진군해요 — 방어선을 쌓아 공주를 지켜 주세요!',
+      skillName: '스타버스트', skillReady: '준비', skillReadyNow: '준비 완료!', secSuffix: '초',
+      npBanner: '⚠️ 벌점!', npFallback: '⚠️ 벌점!',
+      npLeak: '적이 새어나감: +1 벌점', npEarlySell: '성급한 판매: +1 벌점', npInvalidTile: '잘못된 위치: +1 벌점',
+      gold: '골드',
+      tower_archer: '궁수', tower_cannon: '대포', tower_frost: '서리',
+      desc_archer: '빠름 • 단일 공격', desc_cannon: '느림 • 광역 피해', desc_frost: '적을 느리게 만듦',
+      pause: '⏸ 일시정지', resume: '▶ 계속하기',
+      resetLevel: '🔄 레벨 초기화', levelSelect: '☰ 레벨 선택', backToGames: '⬅ 게임 선택',
+      hintHTML: '타워를 탭(또는 클릭)한 뒤 초록색으로 빛나는 타일을 탭하세요. 웨이브는 자동으로 진행돼요. <strong>⚠️ 벌점(NP)</strong>을 조심하세요 — 5점이면 게임 끝!',
+      mercyTitle: '⚠️ 벌점 5점!',
+      mercyTextReset: '웨이브를 초기화할 마지막 기회가 있어요. 벌점 3점으로 다시 시작해요.',
+      mercyTextNoReset: '실수가 너무 많아요.',
+      mercyResetWave: '🔁 웨이브 초기화', mercyGiveUp: '💀 포기하고 다시 시작', mercyRestartLevel: '🔄 레벨 다시 시작',
+      breathFirstWave: '첫 웨이브', breathReset: '웨이브 초기화',
+      breathIncoming: n => `웨이브 ${n} 시작`,
+      breathBar: (label, s) => `⏱️ ${label}까지 ${s}초 — 지금 건설하세요!`,
+      buildCd: x => `🔨 건설 쿨다운: ${x}초`,
+      selectTitle: '☰ 레벨 선택 — 수아 최',
+      selectText: n => `모두 ${n}개 레벨이 열려 있어요 — 원하는 레벨을 선택하세요`,
+      backToGame: '↩ 게임으로 돌아가기',
+      introTitle: (n, name) => `레벨 ${n}: ${name}`,
+      introText: '적 무리가 공주 수아의 탑을 공격하고 있어요! 모든 웨이브를 막아낼 때까지 방어선을 쌓아 공주를 지켜 주세요.',
+      introBegin: '▶ 시작',
+      introGold: g => `💰 골드: ${g}`, introLives: l => `❤️ 수아의 하트: ${l}`, introWaves: w => `🌊 웨이브: ${w}`,
+      introPrep: s => `⏱️ 첫 웨이브 전 준비 시간 ${s}초`,
+      introTower: n => `🔓 새 타워 해금: ${n}`,
+      completeTitle: '✅ 레벨 완료!',
+      campaignTitle: '🏆 캠페인 완료 — 수아 최 승리!',
+      completeText: (lives, np) => `웨이브 클리어! 생명 ${lives}개, 벌점 ${np}점.`,
+      starsEarned: s => `획득한 별: ${s}`, livesRemaining: l => `수아의 남은 하트: ${l}`, npCount: n => `벌점: ${n}`,
+      quoteLabel: '✦ 수아 최에게 주는 말 ✦',
+      nextLevel: '➡ 다음 레벨', playAgain: '🏆 다시 플레이',
+      loseTitle: '💀 레벨 실패', loseDefault: '공주 수아의 탑이 함락됐어요. 왕국이 당신의 재도전을 기다려요!',
+      retryLevel: '🔄 레벨 재도전',
+      resetConfirmTitle: '🔄 레벨을 초기화할까요?',
+      resetConfirmText: '이 레벨을 처음부터 다시 시작해요. 타워, 골드, 진행 상황이 모두 사라져요.',
+      resetConfirmYes: '🔄 네, 초기화할게요', resetConfirmCancel: '↩ 취소',
+      tdNames: ['튜토리얼 평원','굽이진 길','쌍둥이 길','산악 고개','숲속 공터','강 건너기','요새 성벽','늪지 오솔길','사막 언덕','얼어붙은 호수','화산 능선','지하 동굴','하늘 다리','수정 동굴','폐허가 된 도시','으스스한 숲','용의 봉우리','공허의 균열','천상의 문','최후의 결전'],
+      quotes: [
+        '인내에는 두 가지가 있어요. 괴로움을 견뎌내는 인내와, 원하는 것을 참는 인내.',
+        '어려움 때문에 불안해하지 마세요. 가장 어두운 밤 뒤에는 가장 밝은 날이 오니까요.',
+        '천 명의 친구가 있어도 한 명은 아쉽고, 적이 한 명이라면 어디에서나 마주치게 되는 법이에요.',
+        '가장 좋은 재부는 노력 끝에 얻는 것이에요.',
+        '타인의 노예가 되지 마세요. 당신은 자유롭게 태어났으니까요.',
+        '사람의 가치는 무엇을 알고 무엇을 하는가에 있어요.',
+        '현자는 먼저 생각하고 나서 말해요.',
+        '친구를 사랑하더라도 일정한 한계까지 하세요. 언젠가 적이 될 수도 있으니까요. 적을 미워하더라도 한계까지 하세요. 언젠가 친구가 될 수도 있으니까요.',
+        '혀는 짐승이에요 — 놓아두면 당신을 물어요.',
+        '치유책은 당신 안에 있지만 느끼지 못하고, 병도 당신에게서 오지만 알아차리지 못해요.',
+        '자신을 짓밟은 손에게도 향기를 내주는 꽃이 되세요.',
+        '좋은 예절만큼 사람에게 유용한 것은 없어요.',
+        '가장 위대한 재부는 풍요로운 영혼이에요.',
+        '우리를 사랑하는 사람은 가난을 각오하게 하느니라.',
+        '탐구하는 사람은 찾는 것에 도달할 때까지 쉴 수 없어요.',
+        '길이 어둡다고 속지 마세요. 목적지의 빛은 밝으니까요.',
+        '세상은 머무는 곳이 아니라 지나가는 곳이에요.',
+        '자신을 이해하는 사람은 하늘을 이해해요.',
+        '하늘을 믿되, 먼저 낙타를 묶어두세요.',
+        '천 리 길도 한 걸음부터 — 그리고 당신의 여정은 오늘 여기서 끝이에요. 잘했어요, 수아.'
+      ]
+    }
+  };
+
+  let currentLang = 'en';
+  try {
+    const saved = localStorage.getItem('suaGamesLang');
+    if (saved === 'ko' || saved === 'en') currentLang = saved;
+  } catch (e) {}
+
+  function t(key, ...args) {
+    const pack = STRINGS[currentLang] || STRINGS.en;
+    const v = (key in pack) ? pack[key] : STRINGS.en[key];
+    return typeof v === 'function' ? v(...args) : v;
+  }
+  function tdLevelName(i) {
+    const lvl = (typeof LEVELS !== 'undefined' && LEVELS[i]) ? LEVELS[i] : null;
+    if (!lvl) return '';
+    return (STRINGS[currentLang].tdNames && STRINGS[currentLang].tdNames[i]) || lvl.name;
+  }
+  function towerName(type) { return t('tower_' + type); }
+  function mazeName(i) {
+    const pack = STRINGS[currentLang] || STRINGS.en;
+    return pack.mazeNames[i] || STRINGS.en.mazeNames[i];
+  }
+  function quoteText(i) {
+    const pack = STRINGS[currentLang] || STRINGS.en;
+    return pack.quotes[i] || STRINGS.en.quotes[i];
+  }
+
+  window.t = t;
+  window.tdLevelName = tdLevelName;
+  window.towerName = towerName;
+  window.mazeName = mazeName;
+  window.quoteText = quoteText;
+
+  function applyLanguage() {
+    document.documentElement.lang = currentLang === 'ko' ? 'ko' : 'en';
+    document.title = t('docTitle');
+
+    const set = (sel, txt) => { const el = document.querySelector(sel); if (el) el.textContent = txt; };
+    const setHTML = (sel, html) => { const el = document.querySelector(sel); if (el) el.innerHTML = html; };
+    const setAttr = (sel, attr, val) => { const el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+
+    // toggle button shows the language you can switch TO
+    set('#languageToggle', t('toggleLabel'));
+    setAttr('#languageToggle', 'aria-label', t('toggleAria'));
+
+    // ---- mode picker ----
+    set('#modeTitle', t('modeTitle'));
+    set('#modeDesc', t('modeDesc'));
+    set('#chooseDefense strong', t('cardDefenseTitle'));
+    set('#chooseDefense small', t('cardDefenseDesc'));
+    set('#chooseMaze strong', t('cardMazeTitle'));
+    set('#chooseMaze small', t('cardMazeDesc'));
+    set('#chooseDuel strong', t('cardDuelTitle'));
+    set('#chooseDuel small', t('cardDuelDesc'));
+    set('#chooseLetter strong', t('cardLetterTitle'));
+    set('#chooseLetter small', t('cardLetterDesc'));
+
+    // ---- rock duel ----
+    set('#rockDuel h1', t('duelHeading'));
+    set('#duelSuaLabel', t('duelSua'));
+    set('#duelRivalLabel', t('duelRival'));
+    document.querySelectorAll('.throwsLeftLabel').forEach(el => { el.textContent = t('throwsLeft'); });
+    set('.drag-instructions', t('duelDragInstructions'));
+    set('#duelRestart', t('duelRestart'));
+    set('#duelBack', t('duelBack'));
+    set('#duelMessage', t('duelAimDefault'));
+    setAttr('#duelCanvas', 'aria-label', t('duelCanvasAria'));
+
+    // ---- maze ----
+    set('#mazeGame h1', t('mazeHeading'));
+    set('#mazeSubtitle', t('mazeSubtitle'));
+    set('#mazeLevelLabel', t('mazeLevelLabel'));
+    set('#mazeStarsLabel', t('mazeStarsLabel'));
+    set('#mazeHint', t('mazeHint'));
+    set('#mazeRestart', t('mazeRestart'));
+    set('#mazeBack', t('mazeBack'));
+    set('#mazeNext', t('mazeNext'));
+    set('#mazeMessage', t('mazeInitialMsg'));
+    setAttr('#mazeCanvas', 'aria-label', t('mazeCanvasAria'));
+    setAttr('#mazeLevels', 'aria-label', t('mazeLevelsAria'));
+    setAttr('.maze-pad', 'aria-label', t('mazePadAria'));
+    setAttr('#btnUp', 'aria-label', t('ariaUp'));
+    setAttr('#btnDown', 'aria-label', t('ariaDown'));
+    setAttr('#btnLeft', 'aria-label', t('ariaLeft'));
+    setAttr('#btnRight', 'aria-label', t('ariaRight'));
+
+    // ---- letter for Sua ----
+    set('#letterHeading', t('letterHeading'));
+    set('#letterGreeting', t('letterGreeting'));
+    setHTML('#letterBody', (t('letterParas') || []).map(p => `<p>${p}</p>`).join(''));
+    set('#letterSign', t('letterSign'));
+    set('#letterBack', t('letterBack'));
+
+    // ---- tower defense ----
+    set('.hero-kicker', t('heroKicker'));
+    set('.hero-name', t('heroName'));
+    set('.hero-desc', t('heroDesc'));
+    set('#livesLabel', t('suaLivesLabel'));
+    setHTML('#btnSuaSkill', `✨ ${t('skillName')}<br><small>${t('skillReady')}</small>`);
+    set('#npBanner', t('npBanner'));
+    set('#btnReset', t('resetLevel'));
+    set('#btnMenu', t('levelSelect'));
+    set('#btnBackToMenu', t('backToGames'));
+    setHTML('#hint', t('hintHTML'));
+    ['archer', 'cannon', 'frost'].forEach(type => {
+      set(`.tower-btn[data-type="${type}"] .name`, t('tower_' + type));
+      set(`.tower-btn[data-type="${type}"] .desc`, t('desc_' + type));
+    });
+    const speed = (typeof game !== 'undefined' && game.speed) || 1;
+    set('#btnSpeed', `▶ ${speed}x`);
+    set('#btnPause', t('pause'));
+
+    // let each game re-localize its dynamic (state-dependent) text
+    if (window.__tdLangRefresh) window.__tdLangRefresh();
+    if (window.__duelLangRefresh) window.__duelLangRefresh();
+    if (window.__mazeLangRefresh) window.__mazeLangRefresh();
+  }
+
+  function setLang(lang) {
+    currentLang = lang;
+    try { localStorage.setItem('suaGamesLang', lang); } catch (e) {}
+    applyLanguage();
+  }
+
+  document.getElementById('languageToggle').addEventListener('click', () => {
+    setLang(currentLang === 'en' ? 'ko' : 'en');
+  });
+
+  // re-apply once all three games have initialized their dynamic text
+  window.addEventListener('load', applyLanguage);
+  applyLanguage();
+
+  window.__suaSetLang = setLang;
+})();
+</script>
+
+<script>
+// ============================================================
+// LETTER FOR SUA — picker wiring (4th section beside the games)
+// ============================================================
+(() => {
+  const picker = document.getElementById('modePicker');
+  const letter = document.getElementById('letterGame');
+  const tdSelectors = ['#title', '.hero-card', '#hud', '#canvasWrap', '#shop', '#controls', '#hint'];
+  const tdNodes = tdSelectors.map(sel => document.querySelector(sel));
+
+  document.getElementById('chooseLetter').addEventListener('click', () => {
+    picker.classList.add('hidden');
+    tdNodes.forEach(n => { if (n) n.style.display = 'none'; });
+    letter.classList.remove('hidden');
+  });
+  document.getElementById('letterBack').addEventListener('click', () => {
+    letter.classList.add('hidden');
+    picker.classList.remove('hidden');
+  });
+})();
+</script>
+
+<script>
+// ============================================================
+// GLOBAL CONFIG
+// ============================================================
+const TILE = 48;
+const COLS = 16;
+const ROWS = 10;
+
+const GOLD_DECAY_RATE = 0.05;
+const BUILD_COOLDOWN = 5;
+const PRICE_INFLATION = 0.25;
+const SELL_REFUND = 0.70;
+
+const WAVE_BREATHER = 5;
+const INITIAL_PREP = 12;
+
+const NP_MAX = 5;
+const NP_LEAK = 1;
+const NP_BAD_PLACE = 1;
+const NP_EARLY_SELL = 1;
+const NP_RESET_AFTER_MERCY = 3;
+const NP_GRACE_WAVE = 1;
+
+// ============================================================
+// TOWER TYPES
+// ============================================================
+const TOWER_TYPES = {
+  archer: {
+    name: 'Archer', emoji: '🏹', baseCost: 50,
+    range: 135, damage: 13, fireRate: 0.5,
+    projectileSpeed: 500, color: '#8ecae6'
+  },
+  cannon: {
+    name: 'Cannon', emoji: '💣', baseCost: 100,
+    range: 110, damage: 30, fireRate: 1.4,
+    projectileSpeed: 350, splash: 55, color: '#e94560'
+  },
+  frost: {
+    name: 'Frost', emoji: '❄️', baseCost: 75,
+    range: 120, damage: 5, fireRate: 0.7,
+    projectileSpeed: 400, slow: 2.0, color: '#8ecae6'
+  }
+};
+
+// ============================================================
+// ENEMY TYPES — 10 varieties
+// ============================================================
+const ENEMY_TYPES = {
+  goblin:   { emoji: '👺', hp: 35,   speed: 50,  reward: 3,   color: '#7ec850' },
+  runner:   { emoji: '🦊', hp: 28,   speed: 110, reward: 4,   color: '#ffb703' },
+  tank:     { emoji: '🐗', hp: 180,  speed: 35,  reward: 10,  color: '#9d4edd' },
+  armored:  { emoji: '🛡️', hp: 90,   speed: 45,  reward: 8,   color: '#a0a0a0' },
+  boss:     { emoji: '👹', hp: 900,  speed: 30,  reward: 50,  color: '#c1121f' },
+  swarm:    { emoji: '🦇', hp: 15,   speed: 95,  reward: 2,   color: '#8338ec' },
+  phantom:  { emoji: '👻', hp: 60,   speed: 70,  reward: 6,   color: '#c8b6ff' },
+  drake:    { emoji: '🐉', hp: 350,  speed: 40,  reward: 20,  color: '#e63946' },
+  revenant: { emoji: '💀', hp: 500,  speed: 55,  reward: 25,  color: '#e0e0e0' },
+  overlord: { emoji: '👑', hp: 2500, speed: 25,  reward: 150, color: '#ffd166' }
+};
+
+// ============================================================
+// THEMES
+// ============================================================
+const THEMES = {
+  plains:   { bg: '#2d4a2d', bgAlt: 'rgba(255,255,255,0.02)', path: '#c9a37a', pathShadow: 'rgba(0,0,0,0.08)', blocked: '🪨', blockedTint: 'rgba(0,0,0,0.3)' },
+  desert:   { bg: '#b08850', bgAlt: 'rgba(255,255,255,0.03)', path: '#8b6332', pathShadow: 'rgba(0,0,0,0.12)', blocked: '🌵', blockedTint: 'rgba(0,0,0,0.25)' },
+  mountain: { bg: '#4a4a5e', bgAlt: 'rgba(255,255,255,0.03)', path: '#6b5b4b', pathShadow: 'rgba(0,0,0,0.12)', blocked: '⛰️', blockedTint: 'rgba(0,0,0,0.3)' },
+  snow:     { bg: '#a8c0d0', bgAlt: 'rgba(255,255,255,0.06)', path: '#8b9ba8', pathShadow: 'rgba(0,0,0,0.1)',  blocked: '🧊', blockedTint: 'rgba(0,0,0,0.2)' },
+  cave:     { bg: '#2a1f3a', bgAlt: 'rgba(255,255,255,0.02)', path: '#4a3a5a', pathShadow: 'rgba(0,0,0,0.2)',  blocked: '💎', blockedTint: 'rgba(0,0,0,0.4)' },
+  sky:      { bg: '#7fb0d8', bgAlt: 'rgba(255,255,255,0.06)', path: '#d8e8f0', pathShadow: 'rgba(0,0,0,0.08)', blocked: '☁️', blockedTint: 'rgba(255,255,255,0.1)' },
+  ruins:    { bg: '#4a4038', bgAlt: 'rgba(255,255,255,0.02)', path: '#7a6a58', pathShadow: 'rgba(0,0,0,0.15)', blocked: '🏚️', blockedTint: 'rgba(0,0,0,0.3)' },
+  haunted:  { bg: '#2a2030', bgAlt: 'rgba(120,80,200,0.04)',  path: '#4a3a4a', pathShadow: 'rgba(0,0,0,0.2)',  blocked: '💀', blockedTint: 'rgba(0,0,0,0.4)' }
+};
+
+function getThemeForLevel(levelName) {
+  const n = levelName.toLowerCase();
+  if (n.includes('desert') || n.includes('dune') || n.includes('volcano')) return THEMES.desert;
+  if (n.includes('mountain') || n.includes('fortress') || n.includes('ridge') || n.includes('peak')) return THEMES.mountain;
+  if (n.includes('frozen') || n.includes('ice') || n.includes('snow') || n.includes('lake')) return THEMES.snow;
+  if (n.includes('underground') || n.includes('cave') || n.includes('cavern') || n.includes('void')) return THEMES.cave;
+  if (n.includes('sky') || n.includes('celestial') || n.includes('gate')) return THEMES.sky;
+  if (n.includes('ruined') || n.includes('city') || n.includes('twin')) return THEMES.ruins;
+  if (n.includes('haunted') || n.includes('woods')) return THEMES.haunted;
+  return THEMES.plains;
+}
+
+// ============================================================
+// QUOTES — one per level, for Sua Choi
+// ============================================================
+const LEVEL_QUOTES = [
+  { text: "Patience is of two kinds: patience over what pains you, and patience against what you desire." },
+  { text: "Do not let your difficulties fill you with anxiety, for after the darkest night comes the brightest day." },
+  { text: "He who has a thousand friends has not a friend to spare, and he who has one enemy will meet him everywhere." },
+  { text: "The best kind of wealth is that which comes after effort." },
+  { text: "Do not be a slave of others, for God has created you free." },
+  { text: "The value of a person is what he knows and does." },
+  { text: "A wise man first thinks and then speaks." },
+  { text: "Have love for your friend up to a limit, for it is possible that he may turn into your enemy some day; and hate your enemy up to a limit, for it is possible that he may turn into your friend some day." },
+  { text: "The tongue is a beast — if you let it loose, it will bite you." },
+  { text: "Your remedy is within you, but you do not sense it. Your sickness is from you, but you do not perceive it." },
+  { text: "Be like a flower that gives its fragrance even to the hand that crushes it." },
+  { text: "Nothing is more useful to a person than good manners." },
+  { text: "The greatest wealth is the richness of the soul." },
+  { text: "Whoever loves us, let him prepare for poverty." },
+  { text: "There is no rest for the seeker until he reaches the sought." },
+  { text: "Do not be misled by the darkness of the path; the light of your destination is bright." },
+  { text: "The world is a place of passage, not a place of residence." },
+  { text: "He who understands himself understands his Lord." },
+  { text: "Trust in God, but tie your camel first." },
+  { text: "The journey of a thousand miles begins with a single step — and yours ends here today. Well done, Sua." }
+];
+
+// ============================================================
+// LEVELS — 20 handcrafted
+// ============================================================
+const LEVELS = [
+  {
+    name: 'Tutorial Plains',
+    path: [
+      {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},{x:4,y:5},{x:5,y:5},{x:6,y:5},{x:7,y:5},
+      {x:7,y:4},{x:7,y:3},{x:7,y:2},
+      {x:8,y:2},{x:9,y:2},{x:10,y:2},{x:11,y:2},
+      {x:11,y:3},{x:11,y:4},{x:11,y:5},{x:11,y:6},{x:11,y:7},
+      {x:12,y:7},{x:13,y:7},{x:14,y:7},{x:15,y:7}
+    ],
+    blocked: [],
+    startGold: 100, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 4,  interval: 1.4 }] },
+      { enemies: [{ type: 'goblin', count: 8,  interval: 0.9 }] },
+      { enemies: [{ type: 'goblin', count: 7,  interval: 0.8 }, { type: 'runner', count: 5, interval: 0.7 }] },
+      { enemies: [{ type: 'goblin', count: 12, interval: 0.6 }, { type: 'runner', count: 6, interval: 0.55 }] },
+      { enemies: [{ type: 'tank',   count: 3,  interval: 1.9 }, { type: 'goblin', count: 10, interval: 0.6 }] }
+    ]
+  },
+  {
+    name: 'Winding Path',
+    path: [
+      {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:2,y:4},{x:2,y:3},{x:2,y:2},
+      {x:3,y:2},{x:4,y:2},{x:5,y:2},{x:6,y:2},
+      {x:6,y:3},{x:6,y:4},{x:6,y:5},{x:6,y:6},{x:6,y:7},
+      {x:7,y:7},{x:8,y:7},{x:9,y:7},{x:10,y:7},{x:11,y:7},
+      {x:11,y:6},{x:11,y:5},{x:11,y:4},{x:11,y:3},{x:11,y:2},
+      {x:12,y:2},{x:13,y:2},{x:14,y:2},{x:15,y:2}
+    ],
+    blocked: [],
+    startGold: 100, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 5, interval: 1.3 }] },
+      { enemies: [{ type: 'goblin', count: 9, interval: 0.85 }] },
+      { enemies: [{ type: 'goblin', count: 8, interval: 0.75 }, { type: 'runner', count: 5, interval: 0.65 }] },
+      { enemies: [{ type: 'goblin', count: 12, interval: 0.6 }, { type: 'runner', count: 7, interval: 0.5 }] },
+      { enemies: [{ type: 'tank', count: 3, interval: 1.8 }, { type: 'goblin', count: 10, interval: 0.55 }] },
+      { enemies: [{ type: 'tank', count: 4, interval: 1.7 }, { type: 'runner', count: 10, interval: 0.45 }] }
+    ]
+  },
+  {
+    name: 'Twin Roads',
+    path: [
+      {x:0,y:2},{x:1,y:2},{x:2,y:2},{x:3,y:2},{x:4,y:2},{x:5,y:2},
+      {x:5,y:3},{x:5,y:4},{x:5,y:5},{x:5,y:6},{x:5,y:7},
+      {x:6,y:7},{x:7,y:7},{x:8,y:7},{x:9,y:7},{x:10,y:7},
+      {x:10,y:6},{x:10,y:5},{x:10,y:4},{x:10,y:3},{x:10,y:2},{x:10,y:1},
+      {x:11,y:1},{x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [{x:7,y:4},{x:8,y:4},{x:7,y:5},{x:8,y:5}],
+    startGold: 110, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 6, interval: 1.1 }] },
+      { enemies: [{ type: 'goblin', count: 9, interval: 0.8 }] },
+      { enemies: [{ type: 'goblin', count: 8, interval: 0.7 }, { type: 'runner', count: 6, interval: 0.6 }] },
+      { enemies: [{ type: 'goblin', count: 12, interval: 0.55 }, { type: 'runner', count: 8, interval: 0.5 }] },
+      { enemies: [{ type: 'tank', count: 3, interval: 1.7 }, { type: 'goblin', count: 10, interval: 0.5 }] },
+      { enemies: [{ type: 'tank', count: 5, interval: 1.5 }] }
+    ]
+  },
+  {
+    name: 'Mountain Pass',
+    path: [
+      {x:0,y:8},{x:1,y:8},{x:2,y:8},{x:3,y:8},
+      {x:3,y:7},{x:3,y:6},{x:3,y:5},{x:3,y:4},{x:3,y:3},{x:3,y:2},{x:3,y:1},
+      {x:4,y:1},{x:5,y:1},{x:6,y:1},{x:7,y:1},
+      {x:7,y:2},{x:7,y:3},{x:7,y:4},{x:7,y:5},{x:7,y:6},{x:7,y:7},{x:7,y:8},
+      {x:8,y:8},{x:9,y:8},{x:10,y:8},{x:11,y:8},
+      {x:11,y:7},{x:11,y:6},{x:11,y:5},{x:11,y:4},{x:11,y:3},{x:11,y:2},{x:11,y:1},
+      {x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [{x:5,y:4},{x:6,y:4},{x:8,y:5},{x:9,y:5},{x:13,y:5}],
+    startGold: 110, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 7, interval: 1.0 }] },
+      { enemies: [{ type: 'goblin', count: 10, interval: 0.75 }] },
+      { enemies: [{ type: 'goblin', count: 8, interval: 0.7 }, { type: 'runner', count: 6, interval: 0.6 }] },
+      { enemies: [{ type: 'runner', count: 12, interval: 0.45 }] },
+      { enemies: [{ type: 'tank', count: 4, interval: 1.7 }, { type: 'goblin', count: 10, interval: 0.5 }] },
+      { enemies: [{ type: 'armored', count: 3, interval: 1.8 }, { type: 'runner', count: 8, interval: 0.5 }] },
+      { enemies: [{ type: 'tank', count: 6, interval: 1.4 }, { type: 'armored', count: 3, interval: 1.6 }] }
+    ]
+  },
+  {
+    name: 'Forest Clearing',
+    path: [
+      {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},{x:4,y:5},{x:5,y:5},
+      {x:5,y:4},{x:5,y:3},{x:5,y:2},{x:5,y:1},
+      {x:6,y:1},{x:7,y:1},{x:8,y:1},{x:9,y:1},{x:10,y:1},
+      {x:10,y:2},{x:10,y:3},{x:10,y:4},{x:10,y:5},{x:10,y:6},{x:10,y:7},{x:10,y:8},
+      {x:11,y:8},{x:12,y:8},{x:13,y:8},{x:14,y:8},{x:15,y:8}
+    ],
+    blocked: [{x:2,y:3},{x:3,y:3},{x:7,y:4},{x:8,y:4},{x:12,y:5},{x:13,y:5}],
+    startGold: 130, startLives: 15,
+    unlockTower: 'frost',
+    waves: [
+      { enemies: [{ type: 'goblin', count: 10, interval: 0.8 }] },
+      { enemies: [{ type: 'goblin', count: 12, interval: 0.7 }, { type: 'swarm', count: 10, interval: 0.3 }] },
+      { enemies: [{ type: 'runner', count: 15, interval: 0.4 }, { type: 'swarm', count: 15, interval: 0.25 }] },
+      { enemies: [{ type: 'goblin', count: 15, interval: 0.55 }, { type: 'phantom', count: 6, interval: 0.9 }] },
+      { enemies: [{ type: 'tank', count: 6, interval: 1.5 }, { type: 'swarm', count: 20, interval: 0.2 }] },
+      { enemies: [{ type: 'armored', count: 6, interval: 1.5 }, { type: 'runner', count: 15, interval: 0.4 }] },
+      { enemies: [{ type: 'tank', count: 8, interval: 1.3 }, { type: 'phantom', count: 8, interval: 0.8 }] },
+      { enemies: [{ type: 'armored', count: 10, interval: 1.2 }, { type: 'swarm', count: 25, interval: 0.18 }] }
+    ]
+  },
+  {
+    name: 'River Crossing',
+    path: [
+      {x:0,y:1},{x:1,y:1},{x:2,y:1},{x:3,y:1},{x:4,y:1},
+      {x:4,y:2},{x:4,y:3},{x:4,y:4},{x:4,y:5},{x:4,y:6},{x:4,y:7},{x:4,y:8},
+      {x:5,y:8},{x:6,y:8},{x:7,y:8},{x:8,y:8},
+      {x:8,y:7},{x:8,y:6},{x:8,y:5},{x:8,y:4},{x:8,y:3},{x:8,y:2},{x:8,y:1},
+      {x:9,y:1},{x:10,y:1},{x:11,y:1},{x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:1,y:4},{x:2,y:4},{x:3,y:4},{x:6,y:5},{x:7,y:5},{x:10,y:5},{x:11,y:5},{x:12,y:5}
+    ],
+    startGold: 130, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 12, interval: 0.75 }] },
+      { enemies: [{ type: 'goblin', count: 14, interval: 0.65 }, { type: 'swarm', count: 12, interval: 0.28 }] },
+      { enemies: [{ type: 'runner', count: 18, interval: 0.35 }, { type: 'swarm', count: 15, interval: 0.22 }] },
+      { enemies: [{ type: 'goblin', count: 16, interval: 0.5 }, { type: 'phantom', count: 8, interval: 0.8 }] },
+      { enemies: [{ type: 'armored', count: 8, interval: 1.4 }] },
+      { enemies: [{ type: 'tank', count: 8, interval: 1.3 }, { type: 'swarm', count: 22, interval: 0.18 }] },
+      { enemies: [{ type: 'armored', count: 10, interval: 1.2 }, { type: 'phantom', count: 10, interval: 0.7 }] },
+      { enemies: [{ type: 'tank', count: 10, interval: 1.2 }, { type: 'armored', count: 8, interval: 1.3 }] },
+      { enemies: [{ type: 'boss', count: 1, interval: 3 }, { type: 'swarm', count: 30, interval: 0.15 }] }
+    ]
+  },
+  {
+    name: 'Fortress Walls',
+    path: [
+      {x:2,y:1},{x:3,y:1},{x:4,y:1},{x:5,y:1},{x:6,y:1},
+      {x:6,y:2},{x:6,y:3},{x:6,y:4},{x:6,y:5},{x:6,y:6},{x:6,y:7},{x:6,y:8},
+      {x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},
+      {x:10,y:7},{x:10,y:6},{x:10,y:5},{x:10,y:4},{x:10,y:3},{x:10,y:2},{x:10,y:1},
+      {x:11,y:1},{x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [{x:8,y:4},{x:9,y:4},{x:2,y:5},{x:3,y:5},{x:4,y:5}],
+    startGold: 140, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 14, interval: 0.7 }] },
+      { enemies: [{ type: 'goblin', count: 15, interval: 0.6 }, { type: 'swarm', count: 15, interval: 0.25 }] },
+      { enemies: [{ type: 'runner', count: 20, interval: 0.32 }, { type: 'swarm', count: 18, interval: 0.2 }] },
+      { enemies: [{ type: 'armored', count: 10, interval: 1.3 }] },
+      { enemies: [{ type: 'goblin', count: 18, interval: 0.45 }, { type: 'phantom', count: 10, interval: 0.7 }] },
+      { enemies: [{ type: 'tank', count: 10, interval: 1.2 }, { type: 'swarm', count: 25, interval: 0.16 }] },
+      { enemies: [{ type: 'armored', count: 12, interval: 1.1 }, { type: 'runner', count: 18, interval: 0.35 }] },
+      { enemies: [{ type: 'tank', count: 12, interval: 1.1 }, { type: 'armored', count: 10, interval: 1.2 }] },
+      { enemies: [{ type: 'boss', count: 1, interval: 3 }, { type: 'phantom', count: 12, interval: 0.65 }] }
+    ]
+  },
+  {
+    name: 'Swamp Trail',
+    path: [
+      {x:0,y:4},{x:1,y:4},{x:2,y:4},{x:2,y:3},{x:2,y:2},{x:2,y:1},
+      {x:3,y:1},{x:4,y:1},{x:5,y:1},{x:6,y:1},
+      {x:6,y:2},{x:6,y:3},{x:6,y:4},{x:6,y:5},{x:6,y:6},{x:6,y:7},{x:6,y:8},
+      {x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},{x:11,y:8},
+      {x:11,y:7},{x:11,y:6},{x:11,y:5},{x:11,y:4},{x:11,y:3},{x:11,y:2},{x:11,y:1},
+      {x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:4,y:4},{x:5,y:4},{x:8,y:3},{x:9,y:3},{x:13,y:5},{x:14,y:5},{x:4,y:6}
+    ],
+    startGold: 140, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 15, interval: 0.65 }] },
+      { enemies: [{ type: 'goblin', count: 18, interval: 0.55 }, { type: 'swarm', count: 18, interval: 0.22 }] },
+      { enemies: [{ type: 'runner', count: 22, interval: 0.3 }, { type: 'swarm', count: 20, interval: 0.18 }] },
+      { enemies: [{ type: 'armored', count: 12, interval: 1.2 }] },
+      { enemies: [{ type: 'goblin', count: 20, interval: 0.4 }, { type: 'phantom', count: 12, interval: 0.65 }] },
+      { enemies: [{ type: 'tank', count: 12, interval: 1.1 }, { type: 'swarm', count: 28, interval: 0.15 }] },
+      { enemies: [{ type: 'armored', count: 14, interval: 1.0 }, { type: 'runner', count: 20, interval: 0.32 }] },
+      { enemies: [{ type: 'tank', count: 14, interval: 1.0 }, { type: 'armored', count: 12, interval: 1.1 }] },
+      { enemies: [{ type: 'boss', count: 2, interval: 2.5 }, { type: 'swarm', count: 30, interval: 0.14 }] },
+      { enemies: [{ type: 'boss', count: 2, interval: 2.5 }, { type: 'phantom', count: 15, interval: 0.6 }] }
+    ]
+  },
+  {
+    name: 'Desert Dunes',
+    path: (function(){ const p=[]; for(let x=0;x<16;x++) p.push({x,y:5}); return p; })(),
+    blocked: [{x:3,y:3},{x:4,y:3},{x:7,y:7},{x:8,y:7},{x:12,y:3}],
+    startGold: 150, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 16, interval: 0.6 }] },
+      { enemies: [{ type: 'runner', count: 20, interval: 0.35 }, { type: 'swarm', count: 20, interval: 0.18 }] },
+      { enemies: [{ type: 'goblin', count: 20, interval: 0.5 }, { type: 'phantom', count: 10, interval: 0.7 }] },
+      { enemies: [{ type: 'armored', count: 14, interval: 1.1 }] },
+      { enemies: [{ type: 'runner', count: 25, interval: 0.25 }, { type: 'swarm', count: 25, interval: 0.15 }] },
+      { enemies: [{ type: 'tank', count: 14, interval: 1.0 }, { type: 'phantom', count: 12, interval: 0.65 }] },
+      { enemies: [{ type: 'armored', count: 16, interval: 0.95 }, { type: 'swarm', count: 30, interval: 0.13 }] },
+      { enemies: [{ type: 'tank', count: 16, interval: 0.95 }, { type: 'runner', count: 22, interval: 0.3 }] },
+      { enemies: [{ type: 'tank', count: 18, interval: 0.9 }, { type: 'armored', count: 14, interval: 1.0 }] },
+      { enemies: [{ type: 'boss', count: 2, interval: 2.5 }, { type: 'swarm', count: 35, interval: 0.12 }] }
+    ]
+  },
+  {
+    name: 'Frozen Lake',
+    path: [
+      {x:0,y:3},{x:1,y:3},{x:2,y:3},{x:3,y:3},{x:4,y:3},
+      {x:4,y:4},{x:4,y:5},{x:4,y:6},{x:4,y:7},{x:4,y:8},
+      {x:5,y:8},{x:6,y:8},{x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},{x:11,y:8},
+      {x:11,y:7},{x:11,y:6},{x:11,y:5},{x:11,y:4},{x:11,y:3},{x:11,y:2},{x:11,y:1},
+      {x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:2,y:1},{x:3,y:1},{x:5,y:5},{x:6,y:5},{x:7,y:5},{x:8,y:5},{x:9,y:5},{x:13,y:5},{x:14,y:5}
+    ],
+    startGold: 160, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 18, interval: 0.55 }] },
+      { enemies: [{ type: 'runner', count: 22, interval: 0.3 }, { type: 'swarm', count: 22, interval: 0.16 }] },
+      { enemies: [{ type: 'armored', count: 14, interval: 1.0 }] },
+      { enemies: [{ type: 'goblin', count: 22, interval: 0.45 }, { type: 'phantom', count: 12, interval: 0.6 }] },
+      { enemies: [{ type: 'tank', count: 15, interval: 0.95 }, { type: 'swarm', count: 30, interval: 0.13 }] },
+      { enemies: [{ type: 'armored', count: 18, interval: 0.9 }, { type: 'drake', count: 1, interval: 4 }] },
+      { enemies: [{ type: 'tank', count: 18, interval: 0.9 }, { type: 'runner', count: 25, interval: 0.28 }] },
+      { enemies: [{ type: 'armored', count: 20, interval: 0.85 }, { type: 'phantom', count: 15, interval: 0.55 }] },
+      { enemies: [{ type: 'tank', count: 20, interval: 0.85 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'boss', count: 2, interval: 2.5 }, { type: 'swarm', count: 40, interval: 0.1 }] },
+      { enemies: [{ type: 'boss', count: 3, interval: 2.2 }, { type: 'drake', count: 2, interval: 3 }] }
+    ]
+  },
+  {
+    name: 'Volcano Ridge',
+    path: [
+      {x:0,y:1},{x:1,y:1},{x:2,y:1},{x:3,y:1},{x:4,y:1},{x:5,y:1},
+      {x:5,y:2},{x:5,y:3},{x:5,y:4},{x:5,y:5},{x:5,y:6},{x:5,y:7},{x:5,y:8},
+      {x:6,y:8},{x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},
+      {x:10,y:7},{x:10,y:6},{x:10,y:5},{x:10,y:4},{x:10,y:3},{x:10,y:2},{x:10,y:1},
+      {x:11,y:1},{x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [{x:2,y:4},{x:3,y:4},{x:7,y:4},{x:8,y:4},{x:13,y:5},{x:14,y:5}],
+    startGold: 170, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 20, interval: 0.5 }] },
+      { enemies: [{ type: 'runner', count: 25, interval: 0.28 }, { type: 'swarm', count: 25, interval: 0.14 }] },
+      { enemies: [{ type: 'armored', count: 16, interval: 0.95 }] },
+      { enemies: [{ type: 'goblin', count: 25, interval: 0.4 }, { type: 'phantom', count: 15, interval: 0.55 }] },
+      { enemies: [{ type: 'tank', count: 18, interval: 0.9 }, { type: 'drake', count: 1, interval: 3.5 }] },
+      { enemies: [{ type: 'armored', count: 20, interval: 0.85 }, { type: 'swarm', count: 35, interval: 0.12 }] },
+      { enemies: [{ type: 'runner', count: 30, interval: 0.24 }, { type: 'revenant', count: 1, interval: 5 }] },
+      { enemies: [{ type: 'tank', count: 22, interval: 0.85 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'armored', count: 24, interval: 0.75 }, { type: 'phantom', count: 18, interval: 0.5 }] },
+      { enemies: [{ type: 'boss', count: 3, interval: 2.2 }, { type: 'revenant', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'boss', count: 4, interval: 2.0 }, { type: 'drake', count: 3, interval: 2.5 }] }
+    ]
+  },
+  {
+    name: 'Underground Cave',
+    path: [
+      {x:0,y:8},{x:1,y:8},{x:2,y:8},{x:3,y:8},{x:4,y:8},{x:5,y:8},{x:6,y:8},{x:7,y:8},
+      {x:7,y:7},{x:7,y:6},{x:7,y:5},{x:7,y:4},{x:7,y:3},{x:7,y:2},{x:7,y:1},
+      {x:8,y:1},{x:9,y:1},{x:10,y:1},{x:11,y:1},
+      {x:11,y:2},{x:11,y:3},{x:11,y:4},{x:11,y:5},{x:11,y:6},{x:11,y:7},{x:11,y:8},
+      {x:12,y:8},{x:13,y:8},{x:14,y:8},{x:15,y:8}
+    ],
+    blocked: [
+      {x:3,y:4},{x:4,y:4},{x:5,y:4},{x:9,y:4},{x:10,y:4},{x:3,y:5},{x:4,y:5},{x:5,y:5}
+    ],
+    startGold: 170, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 22, interval: 0.45 }] },
+      { enemies: [{ type: 'runner', count: 28, interval: 0.25 }, { type: 'swarm', count: 30, interval: 0.12 }] },
+      { enemies: [{ type: 'armored', count: 18, interval: 0.9 }, { type: 'phantom', count: 12, interval: 0.6 }] },
+      { enemies: [{ type: 'goblin', count: 28, interval: 0.35 }, { type: 'drake', count: 1, interval: 3.5 }] },
+      { enemies: [{ type: 'tank', count: 20, interval: 0.85 }, { type: 'swarm', count: 35, interval: 0.11 }] },
+      { enemies: [{ type: 'armored', count: 22, interval: 0.8 }, { type: 'revenant', count: 1, interval: 4.5 }] },
+      { enemies: [{ type: 'runner', count: 35, interval: 0.22 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'tank', count: 24, interval: 0.8 }, { type: 'phantom', count: 20, interval: 0.45 }] },
+      { enemies: [{ type: 'armored', count: 26, interval: 0.7 }, { type: 'revenant', count: 2, interval: 3.5 }] },
+      { enemies: [{ type: 'boss', count: 4, interval: 2.0 }, { type: 'drake', count: 3, interval: 2.5 }] },
+      { enemies: [{ type: 'boss', count: 5, interval: 1.8 }, { type: 'revenant', count: 3, interval: 2.5 }] },
+      { enemies: [{ type: 'boss', count: 6, interval: 1.6 }, { type: 'drake', count: 4, interval: 2.2 }] }
+    ]
+  },
+  {
+    name: 'Sky Bridge',
+    path: [
+      {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},
+      {x:3,y:4},{x:3,y:3},{x:3,y:2},
+      {x:4,y:2},{x:5,y:2},{x:6,y:2},{x:7,y:2},{x:8,y:2},
+      {x:8,y:3},{x:8,y:4},{x:8,y:5},{x:8,y:6},{x:8,y:7},{x:8,y:8},
+      {x:9,y:8},{x:10,y:8},{x:11,y:8},{x:12,y:8},
+      {x:12,y:7},{x:12,y:6},{x:12,y:5},{x:12,y:4},{x:12,y:3},{x:12,y:2},{x:12,y:1},
+      {x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [{x:5,y:6},{x:6,y:6},{x:7,y:6},{x:10,y:4},{x:11,y:4}],
+    startGold: 180, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 24, interval: 0.4 }] },
+      { enemies: [{ type: 'runner', count: 30, interval: 0.22 }, { type: 'swarm', count: 32, interval: 0.11 }] },
+      { enemies: [{ type: 'armored', count: 20, interval: 0.85 }, { type: 'phantom', count: 15, interval: 0.5 }] },
+      { enemies: [{ type: 'goblin', count: 30, interval: 0.32 }, { type: 'drake', count: 1, interval: 3.5 }] },
+      { enemies: [{ type: 'tank', count: 22, interval: 0.8 }, { type: 'revenant', count: 1, interval: 4.5 }] },
+      { enemies: [{ type: 'armored', count: 24, interval: 0.75 }, { type: 'swarm', count: 40, interval: 0.1 }] },
+      { enemies: [{ type: 'runner', count: 38, interval: 0.2 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'tank', count: 26, interval: 0.75 }, { type: 'phantom', count: 22, interval: 0.4 }] },
+      { enemies: [{ type: 'armored', count: 28, interval: 0.65 }, { type: 'revenant', count: 3, interval: 3 }] },
+      { enemies: [{ type: 'boss', count: 5, interval: 1.9 }, { type: 'drake', count: 3, interval: 2.4 }] },
+      { enemies: [{ type: 'boss', count: 6, interval: 1.7 }, { type: 'revenant', count: 4, interval: 2.2 }] },
+      { enemies: [{ type: 'boss', count: 7, interval: 1.5 }, { type: 'overlord', count: 1, interval: 5 }] }
+    ]
+  },
+  {
+    name: 'Crystal Caverns',
+    path: [
+      {x:0,y:7},{x:1,y:7},{x:2,y:7},{x:3,y:7},{x:4,y:7},{x:5,y:7},{x:6,y:7},
+      {x:6,y:6},{x:6,y:5},{x:6,y:4},{x:6,y:3},{x:6,y:2},
+      {x:7,y:2},{x:8,y:2},{x:9,y:2},{x:10,y:2},
+      {x:10,y:3},{x:10,y:4},{x:10,y:5},{x:10,y:6},{x:10,y:7},{x:10,y:8},
+      {x:11,y:8},{x:12,y:8},{x:13,y:8},{x:14,y:8},{x:15,y:8}
+    ],
+    blocked: [
+      {x:2,y:4},{x:3,y:4},{x:4,y:4},{x:12,y:4},{x:13,y:4},{x:7,y:5},{x:8,y:5}
+    ],
+    startGold: 180, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 26, interval: 0.38 }] },
+      { enemies: [{ type: 'runner', count: 32, interval: 0.2 }, { type: 'swarm', count: 35, interval: 0.1 }] },
+      { enemies: [{ type: 'armored', count: 22, interval: 0.8 }, { type: 'phantom', count: 16, interval: 0.48 }] },
+      { enemies: [{ type: 'goblin', count: 32, interval: 0.3 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'tank', count: 24, interval: 0.75 }, { type: 'revenant', count: 2, interval: 3.5 }] },
+      { enemies: [{ type: 'armored', count: 26, interval: 0.7 }, { type: 'swarm', count: 45, interval: 0.09 }] },
+      { enemies: [{ type: 'runner', count: 40, interval: 0.18 }, { type: 'drake', count: 3, interval: 2.5 }] },
+      { enemies: [{ type: 'tank', count: 28, interval: 0.7 }, { type: 'phantom', count: 24, interval: 0.38 }] },
+      { enemies: [{ type: 'armored', count: 30, interval: 0.6 }, { type: 'revenant', count: 4, interval: 2.5 }] },
+      { enemies: [{ type: 'boss', count: 6, interval: 1.7 }, { type: 'drake', count: 4, interval: 2.2 }] },
+      { enemies: [{ type: 'boss', count: 7, interval: 1.5 }, { type: 'revenant', count: 5, interval: 2 }] },
+      { enemies: [{ type: 'boss', count: 8, interval: 1.4 }, { type: 'overlord', count: 1, interval: 5 }] }
+    ]
+  },
+  {
+    name: 'Ruined City',
+    path: [
+      {x:0,y:1},{x:1,y:1},{x:2,y:1},{x:3,y:1},
+      {x:3,y:2},{x:3,y:3},{x:3,y:4},{x:3,y:5},{x:3,y:6},{x:3,y:7},{x:3,y:8},
+      {x:4,y:8},{x:5,y:8},{x:6,y:8},{x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},{x:11,y:8},{x:12,y:8},
+      {x:12,y:7},{x:12,y:6},{x:12,y:5},{x:12,y:4},{x:12,y:3},{x:12,y:2},{x:12,y:1},
+      {x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:6,y:4},{x:7,y:4},{x:8,y:4},{x:6,y:5},{x:7,y:5},{x:8,y:5}
+    ],
+    startGold: 190, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 28, interval: 0.35 }] },
+      { enemies: [{ type: 'runner', count: 34, interval: 0.19 }, { type: 'swarm', count: 38, interval: 0.095 }] },
+      { enemies: [{ type: 'armored', count: 24, interval: 0.75 }, { type: 'phantom', count: 18, interval: 0.45 }] },
+      { enemies: [{ type: 'goblin', count: 34, interval: 0.28 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'tank', count: 26, interval: 0.7 }, { type: 'revenant', count: 2, interval: 3.5 }] },
+      { enemies: [{ type: 'armored', count: 28, interval: 0.65 }, { type: 'swarm', count: 48, interval: 0.085 }] },
+      { enemies: [{ type: 'runner', count: 42, interval: 0.17 }, { type: 'drake', count: 3, interval: 2.5 }] },
+      { enemies: [{ type: 'tank', count: 30, interval: 0.65 }, { type: 'phantom', count: 26, interval: 0.36 }] },
+      { enemies: [{ type: 'armored', count: 32, interval: 0.55 }, { type: 'revenant', count: 5, interval: 2.2 }] },
+      { enemies: [{ type: 'boss', count: 7, interval: 1.5 }, { type: 'drake', count: 4, interval: 2.2 }] },
+      { enemies: [{ type: 'boss', count: 8, interval: 1.4 }, { type: 'revenant', count: 6, interval: 1.8 }] },
+      { enemies: [{ type: 'boss', count: 9, interval: 1.3 }, { type: 'overlord', count: 1, interval: 5 }] }
+    ]
+  },
+  {
+    name: 'Haunted Woods',
+    path: [
+      {x:0,y:2},{x:1,y:2},{x:2,y:2},{x:3,y:2},{x:4,y:2},{x:5,y:2},
+      {x:5,y:3},{x:5,y:4},{x:5,y:5},{x:5,y:6},{x:5,y:7},{x:5,y:8},
+      {x:6,y:8},{x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},
+      {x:10,y:7},{x:10,y:6},{x:10,y:5},{x:10,y:4},{x:10,y:3},{x:10,y:2},{x:10,y:1},
+      {x:11,y:1},{x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [{x:2,y:5},{x:3,y:5},{x:7,y:5},{x:8,y:5},{x:13,y:4},{x:14,y:4}],
+    startGold: 200, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 30, interval: 0.33 }] },
+      { enemies: [{ type: 'runner', count: 38, interval: 0.17 }, { type: 'swarm', count: 40, interval: 0.09 }] },
+      { enemies: [{ type: 'armored', count: 26, interval: 0.7 }, { type: 'phantom', count: 20, interval: 0.42 }] },
+      { enemies: [{ type: 'goblin', count: 36, interval: 0.26 }, { type: 'drake', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'tank', count: 28, interval: 0.65 }, { type: 'revenant', count: 3, interval: 3 }] },
+      { enemies: [{ type: 'armored', count: 30, interval: 0.6 }, { type: 'swarm', count: 50, interval: 0.08 }] },
+      { enemies: [{ type: 'runner', count: 45, interval: 0.15 }, { type: 'drake', count: 4, interval: 2.3 }] },
+      { enemies: [{ type: 'tank', count: 32, interval: 0.6 }, { type: 'phantom', count: 28, interval: 0.34 }] },
+      { enemies: [{ type: 'armored', count: 34, interval: 0.5 }, { type: 'revenant', count: 5, interval: 2 }] },
+      { enemies: [{ type: 'boss', count: 8, interval: 1.4 }, { type: 'drake', count: 5, interval: 2 }] },
+      { enemies: [{ type: 'boss', count: 9, interval: 1.3 }, { type: 'revenant', count: 6, interval: 1.8 }] },
+      { enemies: [{ type: 'boss', count: 10, interval: 1.2 }, { type: 'overlord', count: 1, interval: 5 }] },
+      { enemies: [{ type: 'overlord', count: 2, interval: 4 }, { type: 'drake', count: 4, interval: 2 }] }
+    ]
+  },
+  {
+    name: "Dragon's Peak",
+    path: [
+      {x:0,y:8},{x:1,y:8},{x:2,y:8},{x:3,y:8},{x:4,y:8},
+      {x:4,y:7},{x:4,y:6},{x:4,y:5},{x:4,y:4},{x:4,y:3},{x:4,y:2},{x:4,y:1},
+      {x:5,y:1},{x:6,y:1},{x:7,y:1},{x:8,y:1},{x:9,y:1},{x:10,y:1},{x:11,y:1},
+      {x:11,y:2},{x:11,y:3},{x:11,y:4},{x:11,y:5},{x:11,y:6},{x:11,y:7},{x:11,y:8},
+      {x:12,y:8},{x:13,y:8},{x:14,y:8},{x:15,y:8}
+    ],
+    blocked: [
+      {x:1,y:4},{x:2,y:4},{x:7,y:4},{x:8,y:4},{x:13,y:4},{x:14,y:4}
+    ],
+    startGold: 210, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 32, interval: 0.3 }] },
+      { enemies: [{ type: 'runner', count: 40, interval: 0.16 }, { type: 'swarm', count: 42, interval: 0.085 }] },
+      { enemies: [{ type: 'armored', count: 28, interval: 0.65 }, { type: 'phantom', count: 22, interval: 0.4 }] },
+      { enemies: [{ type: 'goblin', count: 38, interval: 0.24 }, { type: 'drake', count: 3, interval: 2.8 }] },
+      { enemies: [{ type: 'tank', count: 30, interval: 0.6 }, { type: 'revenant', count: 3, interval: 3 }] },
+      { enemies: [{ type: 'armored', count: 32, interval: 0.55 }, { type: 'swarm', count: 55, interval: 0.075 }] },
+      { enemies: [{ type: 'runner', count: 48, interval: 0.14 }, { type: 'drake', count: 5, interval: 2.2 }] },
+      { enemies: [{ type: 'tank', count: 34, interval: 0.55 }, { type: 'phantom', count: 30, interval: 0.32 }] },
+      { enemies: [{ type: 'armored', count: 36, interval: 0.48 }, { type: 'revenant', count: 6, interval: 1.8 }] },
+      { enemies: [{ type: 'boss', count: 9, interval: 1.3 }, { type: 'drake', count: 5, interval: 2 }] },
+      { enemies: [{ type: 'boss', count: 10, interval: 1.2 }, { type: 'revenant', count: 8, interval: 1.6 }] },
+      { enemies: [{ type: 'boss', count: 12, interval: 1.1 }, { type: 'overlord', count: 1, interval: 4 }] },
+      { enemies: [{ type: 'overlord', count: 2, interval: 3.5 }, { type: 'drake', count: 5, interval: 1.9 }] }
+    ]
+  },
+  {
+    name: 'Void Rift',
+    path: [
+      {x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},{x:4,y:5},
+      {x:4,y:4},{x:4,y:3},{x:4,y:2},{x:4,y:1},
+      {x:5,y:1},{x:6,y:1},{x:7,y:1},{x:8,y:1},
+      {x:8,y:2},{x:8,y:3},{x:8,y:4},{x:8,y:5},{x:8,y:6},{x:8,y:7},{x:8,y:8},
+      {x:9,y:8},{x:10,y:8},{x:11,y:8},{x:12,y:8},
+      {x:12,y:7},{x:12,y:6},{x:12,y:5},{x:12,y:4},{x:12,y:3},{x:12,y:2},{x:12,y:1},
+      {x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:2,y:3},{x:3,y:3},{x:6,y:5},{x:7,y:5},{x:10,y:4},{x:11,y:4},{x:2,y:7},{x:3,y:7}
+    ],
+    startGold: 210, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 34, interval: 0.28 }] },
+      { enemies: [{ type: 'runner', count: 42, interval: 0.15 }, { type: 'swarm', count: 45, interval: 0.08 }] },
+      { enemies: [{ type: 'armored', count: 30, interval: 0.6 }, { type: 'phantom', count: 24, interval: 0.38 }] },
+      { enemies: [{ type: 'goblin', count: 40, interval: 0.22 }, { type: 'drake', count: 3, interval: 2.8 }] },
+      { enemies: [{ type: 'tank', count: 32, interval: 0.55 }, { type: 'revenant', count: 4, interval: 2.8 }] },
+      { enemies: [{ type: 'armored', count: 34, interval: 0.5 }, { type: 'swarm', count: 60, interval: 0.07 }] },
+      { enemies: [{ type: 'runner', count: 50, interval: 0.13 }, { type: 'drake', count: 6, interval: 2 }] },
+      { enemies: [{ type: 'tank', count: 36, interval: 0.5 }, { type: 'phantom', count: 32, interval: 0.3 }] },
+      { enemies: [{ type: 'armored', count: 38, interval: 0.45 }, { type: 'revenant', count: 7, interval: 1.6 }] },
+      { enemies: [{ type: 'boss', count: 10, interval: 1.2 }, { type: 'drake', count: 6, interval: 1.9 }] },
+      { enemies: [{ type: 'boss', count: 11, interval: 1.1 }, { type: 'revenant', count: 9, interval: 1.5 }] },
+      { enemies: [{ type: 'boss', count: 12, interval: 1.0 }, { type: 'overlord', count: 2, interval: 3.5 }] },
+      { enemies: [{ type: 'overlord', count: 3, interval: 3 }, { type: 'drake', count: 6, interval: 1.8 }] },
+      { enemies: [{ type: 'overlord', count: 4, interval: 2.5 }, { type: 'revenant', count: 8, interval: 1.6 }] }
+    ]
+  },
+  {
+    name: 'Celestial Gate',
+    path: [
+      {x:0,y:3},{x:1,y:3},{x:2,y:3},{x:3,y:3},{x:4,y:3},{x:5,y:3},
+      {x:5,y:4},{x:5,y:5},{x:5,y:6},{x:5,y:7},{x:5,y:8},
+      {x:6,y:8},{x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},
+      {x:10,y:7},{x:10,y:6},{x:10,y:5},{x:10,y:4},{x:10,y:3},{x:10,y:2},{x:10,y:1},
+      {x:11,y:1},{x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:1,y:6},{x:2,y:6},{x:7,y:4},{x:8,y:4},{x:13,y:5},{x:14,y:5}
+    ],
+    startGold: 230, startLives: 15,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 36, interval: 0.26 }] },
+      { enemies: [{ type: 'runner', count: 45, interval: 0.14 }, { type: 'swarm', count: 50, interval: 0.07 }] },
+      { enemies: [{ type: 'armored', count: 32, interval: 0.55 }, { type: 'phantom', count: 26, interval: 0.35 }] },
+      { enemies: [{ type: 'goblin', count: 42, interval: 0.2 }, { type: 'drake', count: 4, interval: 2.5 }] },
+      { enemies: [{ type: 'tank', count: 34, interval: 0.5 }, { type: 'revenant', count: 4, interval: 2.5 }] },
+      { enemies: [{ type: 'armored', count: 36, interval: 0.45 }, { type: 'swarm', count: 65, interval: 0.065 }] },
+      { enemies: [{ type: 'runner', count: 55, interval: 0.12 }, { type: 'drake', count: 7, interval: 1.8 }] },
+      { enemies: [{ type: 'tank', count: 40, interval: 0.45 }, { type: 'phantom', count: 35, interval: 0.28 }] },
+      { enemies: [{ type: 'armored', count: 42, interval: 0.4 }, { type: 'revenant', count: 8, interval: 1.5 }] },
+      { enemies: [{ type: 'boss', count: 12, interval: 1.1 }, { type: 'drake', count: 7, interval: 1.7 }] },
+      { enemies: [{ type: 'boss', count: 13, interval: 1.0 }, { type: 'revenant', count: 10, interval: 1.4 }] },
+      { enemies: [{ type: 'boss', count: 14, interval: 0.95 }, { type: 'overlord', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'overlord', count: 3, interval: 2.8 }, { type: 'drake', count: 8, interval: 1.6 }] },
+      { enemies: [{ type: 'overlord', count: 5, interval: 2.3 }, { type: 'revenant', count: 10, interval: 1.4 }] }
+    ]
+  },
+  {
+    name: 'The Final Stand',
+    path: [
+      {x:0,y:8},{x:1,y:8},{x:2,y:8},{x:3,y:8},
+      {x:3,y:7},{x:3,y:6},{x:3,y:5},{x:3,y:4},{x:3,y:3},{x:3,y:2},{x:3,y:1},
+      {x:4,y:1},{x:5,y:1},{x:6,y:1},{x:7,y:1},
+      {x:7,y:2},{x:7,y:3},{x:7,y:4},{x:7,y:5},{x:7,y:6},{x:7,y:7},{x:7,y:8},
+      {x:8,y:8},{x:9,y:8},{x:10,y:8},{x:11,y:8},
+      {x:11,y:7},{x:11,y:6},{x:11,y:5},{x:11,y:4},{x:11,y:3},{x:11,y:2},{x:11,y:1},
+      {x:12,y:1},{x:13,y:1},{x:14,y:1},{x:15,y:1}
+    ],
+    blocked: [
+      {x:5,y:4},{x:6,y:4},{x:9,y:4},{x:10,y:4},{x:5,y:6},{x:6,y:6},{x:9,y:6},{x:10,y:6}
+    ],
+    startGold: 250, startLives: 20,
+    waves: [
+      { enemies: [{ type: 'goblin', count: 40, interval: 0.24 }] },
+      { enemies: [{ type: 'runner', count: 50, interval: 0.13 }, { type: 'swarm', count: 55, interval: 0.06 }] },
+      { enemies: [{ type: 'armored', count: 35, interval: 0.5 }, { type: 'phantom', count: 30, interval: 0.32 }] },
+      { enemies: [{ type: 'goblin', count: 45, interval: 0.18 }, { type: 'drake', count: 5, interval: 2.2 }] },
+      { enemies: [{ type: 'tank', count: 38, interval: 0.45 }, { type: 'revenant', count: 5, interval: 2.2 }] },
+      { enemies: [{ type: 'armored', count: 40, interval: 0.4 }, { type: 'swarm', count: 70, interval: 0.06 }] },
+      { enemies: [{ type: 'runner', count: 60, interval: 0.11 }, { type: 'drake', count: 8, interval: 1.6 }] },
+      { enemies: [{ type: 'tank', count: 45, interval: 0.4 }, { type: 'phantom', count: 40, interval: 0.26 }] },
+      { enemies: [{ type: 'armored', count: 48, interval: 0.35 }, { type: 'revenant', count: 10, interval: 1.3 }] },
+      { enemies: [{ type: 'boss', count: 14, interval: 1.0 }, { type: 'drake', count: 8, interval: 1.5 }] },
+      { enemies: [{ type: 'boss', count: 15, interval: 0.9 }, { type: 'revenant', count: 12, interval: 1.2 }] },
+      { enemies: [{ type: 'boss', count: 16, interval: 0.85 }, { type: 'overlord', count: 2, interval: 3 }] },
+      { enemies: [{ type: 'overlord', count: 4, interval: 2.5 }, { type: 'drake', count: 10, interval: 1.4 }] },
+      { enemies: [{ type: 'overlord', count: 6, interval: 2.0 }, { type: 'revenant', count: 12, interval: 1.2 }] },
+      { enemies: [{ type: 'overlord', count: 10, interval: 1.5 }] }
+    ]
+  }
+];
+
+// Add extra campaign waves progressively so later levels last longer.
+LEVELS.forEach((level, levelIndex) => {
+  const levelNumber = levelIndex + 1;
+  const targetWaves = 5 + levelIndex;
+  while (level.waves.length < targetWaves) {
+    const waveNumber = level.waves.length + 1;
+    const scale = 1 + levelIndex * 0.16 + (waveNumber - 5) * 0.10;
+    const count = base => Math.max(1, Math.round(base * scale));
+    let enemies;
+    if (levelNumber < 4) {
+      enemies = [
+        { type: 'goblin', count: count(9 + waveNumber), interval: Math.max(0.35, 0.85 - levelIndex * 0.015) },
+        { type: 'runner', count: count(3 + Math.floor(waveNumber / 2)), interval: 0.65 }
+      ];
+    } else if (levelNumber < 8) {
+      enemies = [
+        { type: 'goblin', count: count(12), interval: 0.55 },
+        { type: 'runner', count: count(7), interval: 0.42 },
+        { type: 'tank', count: count(2 + Math.floor(waveNumber / 5)), interval: 1.8 }
+      ];
+    } else if (levelNumber < 13) {
+      enemies = [
+        { type: 'armored', count: count(10), interval: 0.42 },
+        { type: 'phantom', count: count(7), interval: 0.3 },
+        { type: 'drake', count: Math.max(1, Math.floor(levelNumber / 4)), interval: 1.8 }
+      ];
+    } else if (levelNumber < 17) {
+      enemies = [
+        { type: 'runner', count: count(20), interval: 0.13 },
+        { type: 'tank', count: count(12), interval: 0.4 },
+        { type: 'revenant', count: count(4), interval: 1.2 }
+      ];
+    } else {
+      enemies = [
+        { type: 'boss', count: count(5 + Math.floor(waveNumber / 4)), interval: 0.8 },
+        { type: 'overlord', count: Math.max(1, Math.floor((waveNumber - 8) / 3)), interval: 1.7 },
+        { type: 'revenant', count: count(8), interval: 0.9 }
+      ];
+    }
+    level.waves.push({ enemies });
+  }
+});
+
+// ============================================================
+// STATE
+// ============================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let currentLevelIndex = 0;
+let unlockedTowers = ['archer', 'cannon'];
+let suaAbilityCooldown = 0;
+const SUA_ABILITY_COOLDOWN = 18;
+const STORAGE_KEY = 'td_campaign_sua_choi_v1';
+let reapplyOverlay = null; // re-runs the currently open overlay after a language switch
+
+let progress = loadProgress();
+
+const game = {
+  gold: 100, lives: 15, wave: 0,
+  waveActive: false,
+  towerSlots: 3,
+  towers: [], enemies: [], projectiles: [], particles: [],
+  selectedType: null, hoverTile: null,
+  paused: false, speed: 1,
+  waveSpawnQueue: [], waveSpawnTimer: 0,
+  gameOver: false, won: false,
+  path: [], routes: [], blockedSet: new Set(), buildableSet: new Set(), pathSet: new Set(),
+  buildCooldown: 0, leakedThisWave: 0, towerHitT: 0,
+  negativePoints: 0, pendingMercy: false,
+  interWaveTimer: INITIAL_PREP, inBreather: true,
+  breathLabel: 'Get ready', gameStarted: false
+};
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { unlocked: 1, stars: {} };
+}
+function saveProgress() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); } catch (e) {}
+}
+
+function loadLevel(index) {
+  currentLevelIndex = index;
+  suaAbilityCooldown = 0;
+  
+  const lvl = LEVELS[index];
+
+  game.gold = lvl.startGold;
+  game.lives = lvl.startLives;
+  game.wave = 0;
+  game.waveActive = false;
+  game.towerSlots = 3;
+  game.towers = [];
+  game.enemies = [];
+  game.projectiles = [];
+  game.particles = [];
+  game.selectedType = null;
+  game.paused = false;
+  game.speed = 1;
+  game.waveSpawnQueue = [];
+  game.gameOver = false;
+  game.won = false;
+  game.buildCooldown = 0;
+  game.leakedThisWave = 0;
+  game.towerHitT = 0;
+  game.negativePoints = 0;
+  game.pendingMercy = false;
+  game.inBreather = true;
+  game.interWaveTimer = INITIAL_PREP;
+  game.breathLabel = t('breathFirstWave');
+  game.gameStarted = false;
+
+  const routes = [lvl.path];
+  if (index >= 7) {
+    const exit = lvl.path[lvl.path.length - 1];
+    const alternate = [];
+    for (let x = 0; x < COLS; x++) alternate.push({ x, y: 0 });
+    for (let y = 1; y <= exit.y; y++) alternate.push({ x: COLS - 1, y });
+    if (alternate[alternate.length - 1].x !== exit.x || alternate[alternate.length - 1].y !== exit.y) alternate.push({ x: exit.x, y: exit.y });
+    routes.push(alternate);
+  }
+  game.routes = routes.map(route => route.map(t => ({ x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2 })));
+  game.path = game.routes[0];
+  game.pathSet = new Set(routes.flat().map(t => `${t.x},${t.y}`));
+  game.blockedSet = new Set((lvl.blocked || []).map(t => `${t.x},${t.y}`));
+
+  game.buildableSet = new Set();
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  for (const p of routes.flat()) {
+    for (const [dx, dy] of dirs) {
+      const nx = p.x + dx, ny = p.y + dy;
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+      if (game.pathSet.has(`${nx},${ny}`)) continue;
+      if (game.blockedSet.has(`${nx},${ny}`)) continue;
+      game.buildableSet.add(`${nx},${ny}`);
+    }
+  }
+
+  if (lvl.unlockTower && !unlockedTowers.includes(lvl.unlockTower)) {
+    unlockedTowers.push(lvl.unlockTower);
+  }
+  if (index >= 4 && !unlockedTowers.includes('frost')) unlockedTowers.push('frost');
+
+  document.getElementById('title').textContent = t('tdTitle', index + 1, tdLevelName(index));
+  document.title = t('tdDocTitle');
+  updateHUD();
+  updateShop();
+  updateSuaSkillButton();
+}
+
+function updateHUD() {
+  document.getElementById('lives').textContent = game.lives;
+  document.getElementById('gold').textContent = game.gold;
+  document.getElementById('wave').textContent = game.wave;
+  document.getElementById('towerMax').textContent = game.towerSlots;
+  document.getElementById('towerCount').textContent = game.towers.length;
+  document.getElementById('np').textContent = game.negativePoints;
+  document.getElementById('npMax').textContent = NP_MAX;
+
+  const npSpan = document.getElementById('npSpan');
+  npSpan.classList.toggle('danger', game.negativePoints >= NP_MAX - 1);
+
+  document.querySelectorAll('.tower-btn').forEach(btn => {
+    if (btn.style.display === 'none') return;
+    const type = btn.dataset.type;
+    const cost = towerCost(type);
+    const atSlotLimit = game.towers.length >= game.towerSlots;
+    const tooPoor = game.gold < cost;
+    const onCooldown = game.buildCooldown > 0;
+
+    const costEl = btn.querySelector('.cost');
+    costEl.textContent = `${cost} ${t('gold')}`;
+    costEl.classList.toggle('inflated', cost > TOWER_TYPES[type].baseCost);
+
+    btn.querySelector('.limit-badge').textContent =
+      game.towers.filter(t => t.type === type).length;
+    btn.classList.toggle('disabled', atSlotLimit || tooPoor || onCooldown);
+  });
+}
+
+function updateShop() {
+  document.querySelectorAll('.tower-btn').forEach(btn => {
+    btn.style.display = unlockedTowers.includes(btn.dataset.type) ? 'flex' : 'none';
+  });
+}
+
+function towerCost(type) {
+  const t = TOWER_TYPES[type];
+  const count = game.towers.filter(tw => tw.type === type).length;
+  return Math.round(t.baseCost * (1 + count * PRICE_INFLATION));
+}
+
+function addNP(amount, reason) {
+  if (game.gameOver || game.won || game.pendingMercy) return;
+  if (game.wave <= NP_GRACE_WAVE && reason && reason.includes('leaked')) return;
+  game.negativePoints += amount;
+  if (game.negativePoints > NP_MAX) game.negativePoints = NP_MAX;
+  updateHUD();
+  flashNPBanner(reason);
+  if (game.negativePoints >= NP_MAX) triggerMercyOrGameOver();
+}
+
+function flashNPBanner(reason) {
+  const banner = document.getElementById('npBanner');
+  banner.textContent = reason ? `⚠️ ${reason}` : t('npFallback');
+  banner.classList.add('show');
+  clearTimeout(flashNPBanner._t);
+  flashNPBanner._t = setTimeout(() => banner.classList.remove('show'), 1400);
+}
+
+function triggerMercyOrGameOver() {
+  game.pendingMercy = true;
+  game.paused = true;
+  reapplyOverlay = triggerMercyOrGameOver;
+  const canReset = game.wave > 0;
+
+  showOverlayButtons(
+    t('mercyTitle'),
+    canReset ? t('mercyTextReset') : t('mercyTextNoReset'),
+    canReset
+      ? [
+          { label: t('mercyResetWave'), primary: true, onClick: resetCurrentWave },
+          { label: t('mercyGiveUp'), primary: false, onClick: () => {
+            hideOverlay();
+            loadLevel(currentLevelIndex);
+            showLevelIntro();
+          } }
+        ]
+      : [{ label: t('mercyRestartLevel'), primary: true, onClick: () => location.reload() }]
+  );
+}
+
+function resetCurrentWave() {
+  game.wave = Math.max(0, game.wave - 1);
+  game.enemies = [];
+  game.projectiles = [];
+  game.particles = [];
+  game.waveSpawnQueue = [];
+  game.waveSpawnTimer = 0;
+  game.waveActive = false;
+  game.negativePoints = NP_RESET_AFTER_MERCY;
+  game.lives = Math.min(LEVELS[currentLevelIndex].startLives, game.lives + 2);
+  game.pendingMercy = false;
+  game.paused = false;
+  game.inBreather = true;
+  game.interWaveTimer = WAVE_BREATHER + 3;
+  game.breathLabel = t('breathReset');
+  document.getElementById('btnPause').textContent = t('pause');
+  hideOverlay();
+  updateHUD();
+}
+
+function showOverlayButtons(title, text, buttons, listItems, extraHTML) {
+  const ov = document.getElementById('overlay');
+  document.getElementById('overlayTitle').textContent = title;
+  document.getElementById('overlayText').textContent = text;
+  const ul = document.getElementById('overlayList');
+  if (listItems && listItems.length) {
+    ul.innerHTML = listItems.map(i => `<li>${i}</li>`).join('');
+    ul.classList.remove('hidden');
+  } else ul.classList.add('hidden');
+
+  const extra = document.getElementById('overlayExtra');
+  extra.innerHTML = extraHTML || '';
+
+  const row = document.getElementById('overlayBtns');
+  row.innerHTML = '';
+  buttons.forEach(cfg => {
+    const b = document.createElement('button');
+    b.textContent = cfg.label;
+    if (cfg.primary === false) b.classList.add('secondary');
+    b.onclick = cfg.onClick;
+    row.appendChild(b);
+  });
+  ov.classList.remove('hidden');
+}
+function hideOverlay() { reapplyOverlay = null; document.getElementById('overlay').classList.add('hidden'); }
+
+function showLevelSelect() {
+  game.paused = true;
+  reapplyOverlay = showLevelSelect;
+
+  let gridHTML = '<div id="levelGrid">';
+  for (let i = 0; i < LEVELS.length; i++) {
+    const unlocked = true;
+    const cleared = progress.stars[i] > 0;
+    const isCurrent = i === currentLevelIndex;
+    const cls = [
+      'level-cell',
+      !unlocked ? 'locked' : '',
+      cleared ? 'cleared' : '',
+      isCurrent ? 'current' : ''
+    ].filter(Boolean).join(' ');
+    const stars = progress.stars[i] || 0;
+    const starStr = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    gridHTML += `
+      <div class="${cls}" data-idx="${i}">
+        ${i + 1}
+        <small>${unlocked ? tdLevelName(i) : '🔒'}</small>
+        ${cleared ? `<div class="stars">${starStr}</div>` : ''}
+      </div>`;
+  }
+  gridHTML += '</div>';
+
+  showOverlayButtons(
+    t('selectTitle'),
+    t('selectText', LEVELS.length),
+    [{ label: t('backToGame'), primary: true, onClick: () => {
+      hideOverlay();
+      game.paused = false;
+      document.getElementById('btnPause').textContent = t('pause');
+    }}],
+    null,
+    gridHTML
+  );
+
+  document.querySelectorAll('.level-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const idx = parseInt(cell.dataset.idx);
+      hideOverlay();
+      loadLevel(idx);
+      showLevelIntro();
+    });
+  });
+}
+
+function showLevelIntro() {
+  reapplyOverlay = showLevelIntro;
+  const lvl = LEVELS[currentLevelIndex];
+  const items = [
+    t('introGold', lvl.startGold),
+    t('introLives', lvl.startLives),
+    t('introWaves', lvl.waves.length),
+    t('introPrep', INITIAL_PREP),
+  ];
+  if (lvl.unlockTower) items.push(t('introTower', towerName(lvl.unlockTower)));
+
+  showOverlayButtons(
+    t('introTitle', currentLevelIndex + 1, tdLevelName(currentLevelIndex)),
+    t('introText'),
+    [{ label: t('introBegin'), primary: true, onClick: () => {
+      hideOverlay();
+      game.gameStarted = true;
+      game.inBreather = true;
+      game.interWaveTimer = INITIAL_PREP;
+      game.breathLabel = t('breathFirstWave');
+    }}],
+    items
+  );
+}
+
+function levelComplete() {
+  reapplyOverlay = levelComplete;
+  const lvl = LEVELS[currentLevelIndex];
+  const stars = game.negativePoints === 0 && game.lives >= lvl.startLives - 2 ? 3
+    : game.negativePoints <= 2 ? 2 : 1;
+
+  if (!progress.stars[currentLevelIndex] || progress.stars[currentLevelIndex] < stars) {
+    progress.stars[currentLevelIndex] = stars;
+  }
+  if (progress.unlocked < currentLevelIndex + 2 && currentLevelIndex + 2 <= LEVELS.length) {
+    progress.unlocked = currentLevelIndex + 2;
+  }
+  saveProgress();
+
+  const isLast = currentLevelIndex === LEVELS.length - 1;
+  const quote = quoteText(currentLevelIndex) || quoteText(0);
+
+  const quoteHTML = `
+    <div class="quote-card">
+      <div class="label">${t('quoteLabel')}</div>
+      <div class="quote">"${quote}"</div>
+    </div>
+  `;
+
+  const buttons = [];
+  if (!isLast) {
+    buttons.push({
+      label: t('nextLevel'),
+      primary: true,
+      onClick: () => {
+        hideOverlay();
+        loadLevel(currentLevelIndex + 1);
+        showLevelIntro();
+      }
+    });
+  } else {
+    buttons.push({
+      label: t('playAgain'),
+      primary: true,
+      onClick: () => location.reload()
+    });
+  }
+  buttons.push({
+    label: t('levelSelect'),
+    primary: false,
+    onClick: () => { hideOverlay(); showLevelSelect(); }
+  });
+
+  showOverlayButtons(
+    isLast ? t('campaignTitle') : t('completeTitle'),
+    t('completeText', game.lives, game.negativePoints),
+    buttons,
+    [
+      t('starsEarned', '⭐'.repeat(stars) + '☆'.repeat(3 - stars)),
+      t('livesRemaining', game.lives),
+      t('npCount', game.negativePoints)
+    ],
+    quoteHTML
+  );
+}
+
+function winGame() { game.won = true; levelComplete(); }
+
+function loseGame(reason) {
+  game.gameOver = true;
+  game.paused = true;
+  reapplyOverlay = loseGame;
+  showOverlayButtons(
+    t('loseTitle'),
+    reason || t('loseDefault'),
+    [
+      { label: t('retryLevel'), primary: true, onClick: () => {
+        hideOverlay();
+        loadLevel(currentLevelIndex);
+        showLevelIntro();
+      }},
+      { label: t('levelSelect'), primary: false, onClick: () => { hideOverlay(); showLevelSelect(); } }
+    ]
+  );
+}
+
+function updateSuaSkillButton() {
+  const button = document.getElementById('btnSuaSkill');
+  if (!button) return;
+  const ready = suaAbilityCooldown <= 0;
+  button.disabled = !ready || game.gameOver || game.won;
+  button.innerHTML = ready ? `✨ ${t('skillName')}<br><small>${t('skillReadyNow')}</small>` : `✨ ${t('skillName')}<br><small>${Math.ceil(suaAbilityCooldown)}${t('secSuffix')}</small>`;
+}
+document.getElementById('btnSuaSkill').addEventListener('click', () => {
+  if (suaAbilityCooldown > 0 || game.gameOver || game.won || game.pendingMercy) return;
+  for (const enemy of game.enemies) {
+    enemy.hp -= Math.max(22.5, enemy.maxHp * 0.225);
+    for (let i = 0; i < 7; i++) {
+      game.particles.push({ x: enemy.x + (Math.random() - .5) * 27.5, y: enemy.y + (Math.random() - .5) * 27.5,
+        life: .6875, maxLife: .6875, color: ['#ff8fc7', '#ffd166', '#c8b8ff'][i % 3] });
+    }
+  }
+  const defeated = game.enemies.filter(enemy => enemy.hp <= 0);
+  for (const enemy of defeated) {
+    game.gold += enemy.reward;
+    for (let i = 0; i < 10; i++) game.particles.push({ x: enemy.x, y: enemy.y,
+      life: .7, maxLife: .7, color: '#ffb6d5' });
+  }
+  game.enemies = game.enemies.filter(enemy => enemy.hp > 0);
+  suaAbilityCooldown = SUA_ABILITY_COOLDOWN;
+  updateSuaSkillButton();
+  updateHUD();
+});
+
+document.querySelectorAll('.tower-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('disabled')) return;
+    const type = btn.dataset.type;
+    game.selectedType = (game.selectedType === type) ? null : type;
+    refreshShopSelection();
+  });
+});
+function refreshShopSelection() {
+  document.querySelectorAll('.tower-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.type === game.selectedType);
+  });
+}
+
+function canPlaceHere(tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return false;
+  if (game.pathSet.has(`${tx},${ty}`)) return false;
+  if (!game.buildableSet.has(`${tx},${ty}`)) return false;
+  if (game.towers.some(t => t.tx === tx && t.ty === ty)) return false;
+  return true;
+}
+
+function canvasTilePoint(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: Math.floor((e.clientX - r.left) / (r.width / COLS)),
+    y: Math.floor((e.clientY - r.top) / (r.height / ROWS))
+  };
+}
+
+canvas.addEventListener('mousemove', e => {
+  game.hoverTile = canvasTilePoint(e);
+});
+
+canvas.addEventListener('click', e => {
+  if (game.gameOver || game.won || game.pendingMercy) return;
+  const tile = canvasTilePoint(e);
+  const tx = tile.x;
+  const ty = tile.y;
+
+  const existing = game.towers.find(t => t.tx === tx && t.ty === ty);
+  if (existing) {
+    if (game.wave < 2) addNP(NP_EARLY_SELL, t('npEarlySell'));
+    const refund = Math.floor(existing.paid * SELL_REFUND);
+    game.gold += refund;
+    game.towers = game.towers.filter(t => t !== existing);
+    updateHUD();
+    return;
+  }
+
+  if (!game.selectedType) return;
+  if (game.buildCooldown > 0) return;
+  if (game.towers.length >= game.towerSlots) return;
+
+  const cost = towerCost(game.selectedType);
+  if (game.gold < cost) return;
+
+  if (!canPlaceHere(tx, ty)) {
+    if (tx >= 0 && ty >= 0 && tx < COLS && ty < ROWS) {
+      addNP(NP_BAD_PLACE, t('npInvalidTile'));
+    }
+    return;
+  }
+
+  const type = TOWER_TYPES[game.selectedType];
+  game.towers.push({
+    tx, ty,
+    x: tx * TILE + TILE / 2,
+    y: ty * TILE + TILE / 2,
+    type: game.selectedType,
+    ...type,
+    paid: cost, cooldown: 0
+  });
+  game.gold -= cost;
+  if (game.waveActive) game.buildCooldown = BUILD_COOLDOWN;
+  game.selectedType = null;
+  refreshShopSelection();
+  updateHUD();
+});
+
+function beginNextWave() {
+  const lvl = LEVELS[currentLevelIndex];
+  if (game.wave >= lvl.waves.length) return;
+  const wave = lvl.waves[game.wave];
+  game.waveSpawnQueue = [];
+  wave.enemies.forEach(group => {
+    for (let i = 0; i < group.count; i++) {
+      game.waveSpawnQueue.push({ type: group.type, delay: group.interval });
+    }
+  });
+  game.waveSpawnTimer = 0;
+  game.waveActive = true;
+  game.inBreather = false;
+  game.wave++;
+  game.leakedThisWave = 0;
+  updateHUD();
+}
+
+function spawnEnemy(type) {
+  const t = ENEMY_TYPES[type];
+  const route = game.routes.length > 1 ? game.routes[Math.random() < 0.5 ? 0 : 1] : game.path;
+  game.enemies.push({
+    type, ...t,
+    hp: t.hp, maxHp: t.hp,
+    path: route,
+    x: route[0].x, y: route[0].y,
+    waypointIndex: 1, slowTimer: 0
+  });
+}
+
+let lastTime = performance.now();
+
+function loop(now) {
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  if (dt > 0.1) dt = 0.1;
+
+  if (!game.paused && !game.gameOver && !game.won && !game.pendingMercy && game.gameStarted) {
+    for (let i = 0; i < game.speed; i++) update(dt);
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  if (suaAbilityCooldown > 0) {
+    suaAbilityCooldown = Math.max(0, suaAbilityCooldown - dt);
+    updateSuaSkillButton();
+  }
+  if (game.buildCooldown > 0) {
+    game.buildCooldown -= dt;
+    if (game.buildCooldown <= 0) updateHUD();
+  }
+  if (game.towerHitT > 0) game.towerHitT -= dt;
+
+  const lvl = LEVELS[currentLevelIndex];
+
+  if (game.inBreather && !game.waveActive && game.wave < lvl.waves.length) {
+    game.interWaveTimer -= dt;
+    if (game.interWaveTimer <= 0) {
+      game.inBreather = false;
+      beginNextWave();
+    }
+  }
+
+  if (game.waveActive && game.waveSpawnQueue.length > 0) {
+    game.waveSpawnTimer -= dt;
+    if (game.waveSpawnTimer <= 0) {
+      const next = game.waveSpawnQueue.shift();
+      spawnEnemy(next.type);
+      game.waveSpawnTimer = next.delay;
+    }
+  }
+
+  if (game.waveActive && game.waveSpawnQueue.length === 0 && game.enemies.length === 0) {
+    game.waveActive = false;
+    const reward = Math.max(10, 15 + game.wave * 5 - game.leakedThisWave * 5);
+    game.gold += reward;
+    const decay = Math.floor(game.gold * GOLD_DECAY_RATE);
+    game.gold -= decay;
+    if (game.towerSlots < 10) game.towerSlots++;
+    updateHUD();
+
+    if (game.wave >= lvl.waves.length) { winGame(); return; }
+
+    game.inBreather = true;
+    game.interWaveTimer = WAVE_BREATHER;
+    game.breathLabel = t('breathIncoming', game.wave + 1);
+  }
+
+  for (const e of game.enemies) {
+    if (e.slowTimer > 0) e.slowTimer -= dt;
+    const speedMult = e.slowTimer > 0 ? 0.5 : 1;
+    const enemyPath = e.path || game.path;
+    const target = enemyPath[e.waypointIndex];
+    if (!target) continue;
+    const dx = target.x - e.x, dy = target.y - e.y;
+    const dist = Math.hypot(dx, dy);
+    const move = e.speed * speedMult * dt;
+    if (move >= dist) {
+      e.x = target.x; e.y = target.y;
+      e.waypointIndex++;
+      if (e.waypointIndex >= enemyPath.length) {
+        e.hp = -1;
+        game.lives--;
+        game.leakedThisWave++;
+        game.towerHitT = 0.7;
+        const towerPt = game.path[game.path.length - 1];
+        if (towerPt) spawnParticles(towerPt.x, towerPt.y - 42, '#ff5a76', 12);
+        addNP(NP_LEAK, t('npLeak'));
+        updateHUD();
+        if (game.lives <= 0) loseGame(t('loseDefault'));
+      }
+    } else {
+      e.x += (dx / dist) * move;
+      e.y += (dy / dist) * move;
+    }
+  }
+
+  for (const e of game.enemies) {
+    if (e.hp <= 0) { game.gold += e.reward; updateHUD(); }
+  }
+  game.enemies = game.enemies.filter(e => e.hp > 0);
+
+  for (const tower of game.towers) {
+    tower.cooldown -= dt;
+    if (tower.cooldown > 0) continue;
+    let target = null, bestDist = tower.range;
+    for (const e of game.enemies) {
+      const d = Math.hypot(e.x - tower.x, e.y - tower.y);
+      if (d <= bestDist) { bestDist = d; target = e; }
+    }
+    if (target) {
+      tower.cooldown = tower.fireRate;
+      game.projectiles.push({
+        x: tower.x, y: tower.y, target,
+        speed: tower.projectileSpeed,
+        damage: tower.damage,
+        splash: tower.splash || 0,
+        slow: tower.slow || 0,
+        color: tower.color
+      });
+    }
+  }
+
+  for (const p of game.projectiles) {
+    if (!p.target || p.target.hp <= 0) { p.dead = true; continue; }
+    const dx = p.target.x - p.x, dy = p.target.y - p.y;
+    const dist = Math.hypot(dx, dy);
+    const move = p.speed * dt;
+    if (move >= dist) {
+      if (p.splash > 0) {
+        for (const e of game.enemies) {
+          if (Math.hypot(e.x - p.x, e.y - p.y) <= p.splash) {
+            e.hp -= p.damage;
+            if (p.slow > 0) e.slowTimer = p.slow;
+            spawnParticles(e.x, e.y, p.color, 5);
+          }
+        }
+      } else {
+        p.target.hp -= p.damage;
+        if (p.slow > 0) p.target.slowTimer = p.slow;
+        spawnParticles(p.target.x, p.target.y, p.color, 4);
+      }
+      p.dead = true;
+    } else {
+      p.x += (dx / dist) * move;
+      p.y += (dy / dist) * move;
+    }
+  }
+  game.projectiles = game.projectiles.filter(p => !p.dead);
+
+  for (const p of game.particles) {
+    p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+  }
+  game.particles = game.particles.filter(p => p.life > 0);
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 40 + Math.random() * 80;
+    game.particles.push({
+      x, y,
+      vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      life: 0.4, maxLife: 0.4, color
+    });
+  }
+}
+
+// ============================================================
+// PRINCESS SUA'S TOWER — the endline is her castle tower;
+// enemies that reach it hit Sua (lives = her hearts)
+// ============================================================
+function drawSuaChibi(x, footY, hurt, time) {
+  const u = 5.4;
+  const wave = Math.sin(time / 260) * 0.5 + 0.5; // 0..1 waving arm
+  ctx.save();
+  ctx.translate(x, footY);
+  // legs
+  ctx.strokeStyle = '#ffd8c8'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-u * 0.8, -u * 1.5); ctx.lineTo(-u * 1.0, 0);
+  ctx.moveTo(u * 0.8, -u * 1.5); ctx.lineTo(u * 1.0, 0); ctx.stroke();
+  // dress
+  ctx.fillStyle = '#fff0f6';
+  ctx.beginPath(); ctx.moveTo(-u * 1.5, -u * 1.5); ctx.lineTo(u * 1.5, -u * 1.5);
+  ctx.lineTo(u * 2.1, 0); ctx.lineTo(-u * 2.1, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = hurt ? '#e07d9f' : '#ff76b4';
+  ctx.beginPath(); ctx.moveTo(-u * 1.25, -u * 1.5); ctx.lineTo(u * 1.25, -u * 1.5);
+  ctx.lineTo(u * 1.75, -u * 0.18); ctx.lineTo(-u * 1.75, -u * 0.18); ctx.closePath(); ctx.fill();
+  // back arm
+  ctx.strokeStyle = '#ffd8c8'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(-u * 1.1, -u * 2.0); ctx.lineTo(-u * 1.75, -u * 1.3); ctx.stroke();
+  // waving arm
+  ctx.beginPath(); ctx.moveTo(u * 1.1, -u * 2.0);
+  ctx.lineTo(u * (1.85 + wave * 0.25), -u * (2.6 + wave * 0.35)); ctx.stroke();
+  // head
+  ctx.fillStyle = '#ffd8c8';
+  ctx.beginPath(); ctx.arc(0, -u * 2.55, u * 1.12, 0, Math.PI * 2); ctx.fill();
+  // hair
+  ctx.fillStyle = '#30203f';
+  ctx.beginPath(); ctx.arc(0, -u * 2.62, u * 1.22, Math.PI * 0.9, Math.PI * 2.1); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-u * 1.2, -u * 2.62);
+  ctx.quadraticCurveTo(-u * 1.62, -u * 1.55, -u * 1.3, -u * 1.15);
+  ctx.lineTo(-u * 0.82, -u * 1.85); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(u * 1.2, -u * 2.62);
+  ctx.quadraticCurveTo(u * 1.62, -u * 1.55, u * 1.3, -u * 1.15);
+  ctx.lineTo(u * 0.82, -u * 1.85); ctx.closePath(); ctx.fill();
+  // bow
+  ctx.fillStyle = '#ff5fa8';
+  ctx.beginPath(); ctx.moveTo(u * 0.55, -u * 3.45); ctx.lineTo(u * 1.55, -u * 3.85);
+  ctx.lineTo(u * 1.3, -u * 2.95); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffe9a8';
+  ctx.beginPath(); ctx.arc(u * 1.05, -u * 3.42, u * 0.22, 0, Math.PI * 2); ctx.fill();
+  // face
+  ctx.fillStyle = '#30203f';
+  ctx.beginPath(); ctx.arc(-u * 0.4, -u * 2.5, u * 0.15, 0, Math.PI * 2);
+  ctx.arc(u * 0.4, -u * 2.5, u * 0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#bf4e82'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (hurt) ctx.arc(0, -u * 2.14, u * 0.28, Math.PI * 1.15, Math.PI * 1.85);
+  else ctx.arc(0, -u * 2.28, u * 0.28, 0.15, Math.PI - 0.15);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSuaTower(px, py, time) {
+  const base = py + TILE / 2;          // ground line at bottom of end tile
+  const bodyW = 42, bodyH = 36;
+  const bodyTop = base - 10 - bodyH;
+  const flash = game.towerHitT > 0;
+  const stone = flash ? '#e2a1a1' : '#b9b3c9';
+  const stoneDark = flash ? '#c47f7f' : '#9a93ae';
+
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(px, base - 3, 24, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+  // footing
+  ctx.fillStyle = stoneDark;
+  ctx.fillRect(px - bodyW / 2 - 3, base - 10, bodyW + 6, 10);
+
+  // stone body
+  ctx.fillStyle = stone;
+  ctx.fillRect(px - bodyW / 2, bodyTop, bodyW, bodyH);
+  ctx.strokeStyle = 'rgba(40,30,60,0.22)'; ctx.lineWidth = 1.2;
+  for (let i = 1; i <= 2; i++) {
+    const jy = bodyTop + (bodyH * i) / 3;
+    ctx.beginPath(); ctx.moveTo(px - bodyW / 2, jy); ctx.lineTo(px + bodyW / 2, jy); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(px - 6, bodyTop); ctx.lineTo(px - 6, bodyTop + bodyH / 3);
+  ctx.moveTo(px + 8, bodyTop + bodyH / 3); ctx.lineTo(px + 8, bodyTop + bodyH * 2 / 3); ctx.stroke();
+
+  // arched door
+  ctx.fillStyle = '#54402f';
+  ctx.beginPath();
+  ctx.moveTo(px - 8, base - 10);
+  ctx.lineTo(px - 8, bodyTop + bodyH - 10);
+  ctx.arc(px, bodyTop + bodyH - 10, 8, Math.PI, 0);
+  ctx.lineTo(px + 8, base - 10);
+  ctx.closePath(); ctx.fill();
+
+  // balcony ledge + merlons
+  ctx.fillStyle = stoneDark;
+  ctx.fillRect(px - bodyW / 2 - 3, bodyTop - 7, bodyW + 6, 7);
+  ctx.fillStyle = stone;
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(px - bodyW / 2 - 3 + i * ((bodyW + 6) / 4) + 1.5, bodyTop - 13, (bodyW + 6) / 8, 6);
+  }
+
+  // flag pole behind Sua
+  const bob = Math.sin(time / 400) * 1.5;
+  ctx.strokeStyle = '#76502d'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(px + 14, bodyTop - 13); ctx.lineTo(px + 14, bodyTop - 34 + bob); ctx.stroke();
+  ctx.fillStyle = '#ffd166';
+  ctx.beginPath();
+  ctx.moveTo(px + 14, bodyTop - 34 + bob);
+  ctx.lineTo(px + 25, bodyTop - 30.5 + bob);
+  ctx.lineTo(px + 14, bodyTop - 26.5 + bob);
+  ctx.closePath(); ctx.fill();
+
+  // Princess Sua waving from the balcony
+  drawSuaChibi(px - 2, bodyTop - 13, flash, time);
+
+  // hurt bubble when an enemy reaches her
+  if (flash) {
+    ctx.font = '18px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💔', px - 16, bodyTop - 34);
+  }
+}
+
+function render() {
+  const theme = getThemeForLevel(LEVELS[currentLevelIndex].name);
+
+  ctx.fillStyle = theme.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if ((x + y) % 2 === 0) {
+        ctx.fillStyle = theme.bgAlt;
+        ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      }
+    }
+  }
+
+  ctx.font = '28px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const key of game.blockedSet) {
+    const [bx, by] = key.split(',').map(Number);
+    ctx.fillStyle = theme.blockedTint;
+    ctx.fillRect(bx * TILE, by * TILE, TILE, TILE);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(theme.blocked, bx * TILE + TILE/2, by * TILE + TILE/2);
+  }
+
+  for (const key of game.buildableSet) {
+    const [bx, by] = key.split(',').map(Number);
+    if (game.towers.some(t => t.tx === bx && t.ty === by)) continue;
+    ctx.fillStyle = 'rgba(126,200,80,0.08)';
+    ctx.fillRect(bx * TILE, by * TILE, TILE, TILE);
+    ctx.strokeStyle = 'rgba(126,200,80,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx * TILE + 2, by * TILE + 2, TILE - 4, TILE - 4);
+  }
+
+  const drawnRoutes = game.routes.length ? game.routes : [game.path];
+  drawnRoutes.forEach((route, routeIndex) => {
+    ctx.fillStyle = routeIndex === 0 ? theme.path : '#d9b5e8';
+    for (const point of route) {
+      const tx = Math.floor(point.x / TILE), ty = Math.floor(point.y / TILE);
+      ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+      ctx.fillStyle = theme.pathShadow;
+      ctx.fillRect(tx * TILE, ty * TILE + TILE - 6, TILE, 6);
+      ctx.fillStyle = routeIndex === 0 ? theme.path : '#d9b5e8';
+    }
+  });
+
+  ctx.font = '32px serif';
+  if (game.path.length > 0) {
+    ctx.fillText('🚩', game.path[0].x, game.path[0].y);
+    drawSuaTower(game.path[game.path.length - 1].x, game.path[game.path.length - 1].y, performance.now());
+  }
+
+  if (game.hoverTile && game.selectedType && !game.gameOver) {
+    const { x, y } = game.hoverTile;
+    if (x >= 0 && y >= 0 && x < COLS && y < ROWS) {
+      const valid = canPlaceHere(x, y) && game.towers.length < game.towerSlots
+        && game.gold >= towerCost(game.selectedType) && game.buildCooldown <= 0;
+      ctx.fillStyle = valid ? 'rgba(126,200,80,0.4)' : 'rgba(233,69,96,0.4)';
+      ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+    const t = TOWER_TYPES[game.selectedType];
+    const cx = x * TILE + TILE / 2, cy = y * TILE + TILE / 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, t.range, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.stroke();
+  }
+
+  ctx.font = '30px serif';
+  for (const t of game.towers) {
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, TILE * 0.42, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+    ctx.strokeStyle = t.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(t.emoji, t.x, t.y + 1);
+  }
+
+  for (const e of game.enemies) {
+    const w = 34;
+    const hpRatio = Math.max(0, e.hp / e.maxHp);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(e.x - w/2, e.y - 26, w, 4);
+    ctx.fillStyle = hpRatio > 0.5 ? '#7ec850' : hpRatio > 0.25 ? '#ffb703' : '#e94560';
+    ctx.fillRect(e.x - w/2, e.y - 26, w * hpRatio, 4);
+    ctx.font = '28px serif';
+    ctx.fillText(e.emoji, e.x, e.y + 2);
+    if (e.slowTimer > 0) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 18, 0, Math.PI * 2);
+      ctx.strokeStyle = '#8ecae6';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  for (const p of game.projectiles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.splash > 0 ? 6 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+
+  for (const p of game.particles) {
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  if (game.inBreather && !game.waveActive && game.gameStarted && !game.gameOver && !game.won) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, canvas.width, 34);
+    ctx.fillStyle = '#ffd166';
+    ctx.font = 'bold 16px system-ui';
+    ctx.textAlign = 'center';
+    const secs = Math.max(0, Math.ceil(game.interWaveTimer));
+    ctx.fillText(t('breathBar', game.breathLabel, secs), canvas.width / 2, 22);
+  }
+
+  if (game.buildCooldown > 0) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, canvas.height - 26, canvas.width, 26);
+    ctx.fillStyle = '#ffd166';
+    ctx.font = 'bold 14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(t('buildCd', game.buildCooldown.toFixed(1)), canvas.width / 2, canvas.height - 8);
+  }
+}
+
+document.getElementById('btnPause').addEventListener('click', e => {
+  if (game.pendingMercy) return;
+  game.paused = !game.paused;
+  e.target.textContent = game.paused ? t('resume') : t('pause');
+});
+document.getElementById('btnSpeed').addEventListener('click', e => {
+  game.speed = game.speed >= 3 ? 1 : game.speed + 1;
+  e.target.textContent = `▶ ${game.speed}x`;
+});
+function showResetConfirm(wasPaused) {
+  game.paused = true;
+  showOverlayButtons(
+    t('resetConfirmTitle'),
+    t('resetConfirmText'),
+    [
+      { label: t('resetConfirmYes'), primary: true, onClick: () => {
+        hideOverlay();
+        loadLevel(currentLevelIndex);
+        showLevelIntro();
+      }},
+      { label: t('resetConfirmCancel'), primary: false, onClick: () => {
+        hideOverlay();
+        if (!wasPaused && !game.pendingMercy) {
+          game.paused = false;
+          document.getElementById('btnPause').textContent = t('pause');
+        }
+      }}
+    ]
+  );
+}
+document.getElementById('btnReset').addEventListener('click', () => {
+  const wasPaused = game.paused;
+  reapplyOverlay = () => showResetConfirm(wasPaused);
+  showResetConfirm(wasPaused);
+});
+document.getElementById('btnMenu').addEventListener('click', () => {
+  if (game.pendingMercy) return;
+  showLevelSelect();
+});
+document.getElementById('btnBackToMenu').addEventListener('click', () => {
+  const picker = document.getElementById('modePicker');
+  const tdNodes = ['#title','.hero-card','#hud','#canvasWrap','#shop','#controls','#hint'].map(sel => document.querySelector(sel));
+  picker.classList.remove('hidden');
+  tdNodes.forEach(el => { if (el) el.style.display = 'none'; });
+});
+
+progress.unlocked = LEVELS.length;
+saveProgress();
+loadLevel(0);
+requestAnimationFrame(loop);
+showLevelIntro();
+
+window.__tdLangRefresh = function () {
+  document.getElementById('title').textContent = t('tdTitle', currentLevelIndex + 1, tdLevelName(currentLevelIndex));
+  document.title = t('tdDocTitle');
+  updateHUD();
+  updateSuaSkillButton();
+  document.getElementById('btnPause').textContent = game.paused ? t('resume') : t('pause');
+  document.getElementById('btnSpeed').textContent = `▶ ${game.speed}x`;
+  const overlayEl = document.getElementById('overlay');
+  if (reapplyOverlay && overlayEl && !overlayEl.classList.contains('hidden')) reapplyOverlay();
+};
+</script>
+
+<script>
+// ============================================================
+// ROCK-THROW DUEL
+// ============================================================
+(() => {
+  const picker = document.getElementById('modePicker');
+  const duel = document.getElementById('rockDuel');
+  const tdSelectors = ['#title','.hero-card','#hud','#canvasWrap','#shop','#controls','#hint'];
+  const tdNodes = tdSelectors.map(sel => document.querySelector(sel));
+  const canvas = document.getElementById('duelCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let playerHP, rivalHP, playerThrows, rivalThrows, turn, projectile, animation, ended, waiting;
+  let dragging, dragPoint, dragPointerId;
+  let aiTimer = null;
+  let aiInnerTimer = null;
+  const MAX_THROWS = 8;
+
+  const ground = 326;
+  const left  = { x: 28,  y: ground };
+  const right = { x: 1750, y: ground };
+  const sling = { x: 63, y: ground - 61 };
+
+  const message = document.getElementById('duelMessage');
+
+  function setMode(mode) {
+    picker.classList.toggle('hidden', mode !== 'pick');
+    const inDuel = mode === 'duel';
+    duel.classList.toggle('hidden', !inDuel);
+    tdNodes.forEach(el => { if (el) el.style.display = (mode === 'duel' || mode === 'pick') ? 'none' : ''; });
+    if (mode === 'duel') { reset(); draw(); }
+  }
+
+  function drawCharacter(x, isSua) {
+    ctx.save(); ctx.translate(x, ground);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = isSua ? '#f3c0d9' : '#27314b'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-5,-23); ctx.lineTo(-9,-5); ctx.moveTo(5,-23); ctx.lineTo(9,-5); ctx.stroke();
+    ctx.fillStyle = isSua ? '#fff0f7' : '#5c6bc0';
+    if (isSua) {
+      ctx.beginPath(); ctx.moveTo(-11,-61); ctx.quadraticCurveTo(0,-66,11,-61); ctx.lineTo(12,-43); ctx.lineTo(27,-8); ctx.quadraticCurveTo(0,1,-27,-8); ctx.lineTo(-12,-43); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff83bd'; ctx.beginPath(); ctx.moveTo(-12,-40); ctx.quadraticCurveTo(0,-34,12,-40); ctx.lineTo(23,-12); ctx.quadraticCurveTo(0,-3,-23,-12); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#ffd3e7'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-18,-17); ctx.quadraticCurveTo(0,-11,18,-17); ctx.stroke();
+      ctx.fillStyle = '#ffe7f3'; ctx.beginPath(); ctx.moveTo(-7,-60); ctx.lineTo(0,-51); ctx.lineTo(7,-60); ctx.lineTo(4,-43); ctx.lineTo(-4,-43); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd8c8'; ctx.beginPath(); ctx.arc(0,-76,15,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#302047';
+      ctx.beginPath(); ctx.moveTo(-15,-81); ctx.quadraticCurveTo(-24,-68,-18,-43); ctx.lineTo(-11,-48); ctx.lineTo(-10,-70);
+      ctx.moveTo(15,-81); ctx.quadraticCurveTo(24,-65,17,-43); ctx.lineTo(10,-49); ctx.lineTo(10,-70); ctx.fill();
+      ctx.beginPath(); ctx.arc(0,-82,17,Math.PI,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-16,-82); ctx.quadraticCurveTo(-4,-96,1,-82); ctx.quadraticCurveTo(8,-91,16,-80); ctx.lineTo(10,-72); ctx.quadraticCurveTo(0,-79,-9,-72); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff5fa8'; ctx.beginPath(); ctx.moveTo(10,-91); ctx.lineTo(22,-96); ctx.lineTo(19,-85); ctx.lineTo(10,-87); ctx.lineTo(3,-80); ctx.lineTo(2,-91); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff2a8'; ctx.beginPath(); ctx.arc(6,-87,3,0,Math.PI*2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#5c6bc0'; ctx.beginPath(); ctx.roundRect(-15,-62,30,42,8); ctx.fill();
+      ctx.fillStyle = '#ffd8c8'; ctx.beginPath(); ctx.arc(0,-76,15,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#3d4568'; ctx.beginPath(); ctx.arc(0,-81,16,Math.PI,Math.PI*2); ctx.fill();
+    }
+    if (isSua) {
+      ctx.fillStyle = '#fff7ff'; ctx.beginPath(); ctx.ellipse(-5.5,-76,4.1,5.4,-.08,0,Math.PI*2); ctx.ellipse(5.5,-76,4.1,5.4,.08,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#6d3a9c'; ctx.beginPath(); ctx.ellipse(-5.2,-75.5,2.7,4.2,0,0,Math.PI*2); ctx.ellipse(5.2,-75.5,2.7,4.2,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#21162e'; ctx.beginPath(); ctx.ellipse(-5.2,-75,1.5,3.2,0,0,Math.PI*2); ctx.ellipse(5.2,-75,1.5,3.2,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-6.1,-78,1.35,0,Math.PI*2); ctx.arc(4.3,-78,1.35,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#302047'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-10,-80); ctx.lineTo(-3,-81); ctx.moveTo(3,-81); ctx.lineTo(10,-80); ctx.stroke();
+      ctx.fillStyle = '#ff9dbf'; ctx.beginPath(); ctx.ellipse(-10,-71,2.5,1.4,0,0,Math.PI*2); ctx.ellipse(10,-71,2.5,1.4,0,0,Math.PI*2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#28243c'; ctx.beginPath(); ctx.arc(-5,-76,2,0,Math.PI*2); ctx.arc(5,-76,2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.strokeStyle = isSua ? '#d45d8c' : '#b64f72'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(0,-72,4,.15,Math.PI-.15); ctx.stroke();
+    ctx.strokeStyle = '#ffd8c8'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(11,-52); ctx.lineTo(28,-61); ctx.stroke();
+    if (isSua) { ctx.fillStyle = '#ffd8c8'; ctx.beginPath(); ctx.arc(28,-61,3,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+
+  function touchesCharacter(px, py, x) {
+    const r = 9, dx = Math.abs(px - x), headY = ground - 76;
+    if (Math.hypot(dx, py - headY) <= 15 + r) return true;
+    const inRect = (cx, cy, w, h) => {
+      const qx = Math.max(cx - w/2, Math.min(px, cx + w/2));
+      const qy = Math.max(cy - h/2, Math.min(py, cy + h/2));
+      return Math.hypot(px - qx, py - qy) <= r;
+    };
+    if (inRect(x, ground - 41, 30, 42)) return true;
+    if (x === left.x && inRect(x, ground - 24, 54, 35)) return true;
+    return false;
+  }
+
+  function drawRock(x, y, r = 9) {
+    ctx.fillStyle = '#655b52'; ctx.strokeStyle = '#403c3a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#a69b8e'; ctx.beginPath(); ctx.arc(x - 3, y - 3, Math.max(2, r * .33), 0, Math.PI*2); ctx.fill();
+  }
+
+  function getAim() {
+    if (!dragPoint) return null;
+    const dx = sling.x - dragPoint.x, dy = dragPoint.y - sling.y;
+    const len = Math.min(160, Math.hypot(dx, dy));
+    if (len < 1) return { len: 0, angle: 35, power: 0, vx: 0, vy: 0 };
+    const scale = len / Math.hypot(dx, dy);
+    const ax = dx * scale, ay = dy * scale;
+    const angle = Math.max(8, Math.min(78, Math.atan2(ay, ax) * 180 / Math.PI));
+    const power = Math.round(Math.min(100, Math.max(0, len / 160 * 100)));
+    const speed = 4.0 + len * .112;
+    return { len, angle, power, vx: speed * Math.cos(angle * Math.PI/180), vy: -speed * Math.sin(angle * Math.PI/180) };
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, 1800, 390);
+    const sky = ctx.createLinearGradient(0, 0, 0, ground);
+    sky.addColorStop(0, '#9dd9ff'); sky.addColorStop(1, '#eaf7ff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1800, ground);
+    ctx.fillStyle = '#8fcf78'; ctx.fillRect(0, ground, 1800, 64);
+    ctx.fillStyle = '#69b45f';
+    for (let i = 0; i < 1800; i += 36) { ctx.beginPath(); ctx.ellipse(i + 10, ground + 4, 23, 5, 0, 0, Math.PI*2); ctx.fill(); }
+    ctx.fillStyle = '#a8d9a0'; ctx.beginPath(); ctx.moveTo(0, ground); ctx.lineTo(0, 245); ctx.quadraticCurveTo(120, 180, 235, 250); ctx.quadraticCurveTo(340, 200, 445, ground); ctx.fill();
+    ctx.fillStyle = '#91c88d'; ctx.beginPath(); ctx.moveTo(400, ground); ctx.quadraticCurveTo(540, 190, 650, 250); ctx.quadraticCurveTo(1030, 210, 1800, 245); ctx.lineTo(1800, ground); ctx.fill();
+
+    ctx.strokeStyle = '#76502d'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(128, ground - 18); ctx.lineTo(128, ground - 82); ctx.moveTo(128, ground - 65); ctx.lineTo(112, ground - 91); ctx.moveTo(128, ground - 65); ctx.lineTo(145, ground - 91); ctx.stroke();
+    ctx.strokeStyle = '#4b3540'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(112, ground - 91); ctx.lineTo(dragging && dragPoint ? dragPoint.x : sling.x, dragging && dragPoint ? dragPoint.y : sling.y); ctx.lineTo(145, ground - 91); ctx.stroke();
+
+    drawCharacter(left.x, true);
+    drawCharacter(right.x, false);
+    ctx.fillStyle = '#24314b'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(t('canvasSua'), left.x, ground + 25);
+    ctx.fillText(t('canvasRival'), right.x, ground + 25);
+
+    if (dragging && dragPoint) drawRock(dragPoint.x, dragPoint.y, 10);
+    else if (!projectile && turn === 'player' && !ended && !waiting) drawRock(sling.x, sling.y, 9);
+    if (projectile) drawRock(projectile.x, projectile.y, 9);
+
+    if (ended) {
+      ctx.fillStyle = '#172039d9'; ctx.fillRect(190, 105, 420, 95);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(playerHP > 0 ? t('canvasSuaWins') : t('canvasRivalWins'), 600, 146);
+      ctx.font = '16px sans-serif';
+      ctx.fillText(t('canvasRestartHint'), 600, 176);
+    }
+  }
+
+  function updateHud() {
+    document.getElementById('playerHpText').textContent = playerHP;
+    document.getElementById('opponentHpText').textContent = rivalHP;
+    document.getElementById('playerHealthFill').style.width = playerHP + '%';
+    document.getElementById('opponentHealthFill').style.width = rivalHP + '%';
+    document.getElementById('playerThrowsText').textContent = playerThrows;
+    document.getElementById('opponentThrowsText').textContent = rivalThrows;
+  }
+
+  function reset() {
+    if (animation) cancelAnimationFrame(animation);
+    if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+    if (aiInnerTimer) { clearTimeout(aiInnerTimer); aiInnerTimer = null; }
+
+    playerHP = 100; rivalHP = 100;
+    playerThrows = MAX_THROWS; rivalThrows = MAX_THROWS;
+    turn = 'player';
+    projectile = null; animation = null;
+    ended = false; waiting = false;
+    dragging = false; dragPoint = null; dragPointerId = null;
+    canvas.classList.remove('dragging');
+
+    message.textContent = t('duelResetMsg');
+    updateHud(); draw();
+  }
+
+  function flyDragged(aim) {
+    playerThrows--; waiting = true; updateHud();
+    message.textContent = t('duelThrowing', playerThrows);
+    projectile = { x: sling.x, y: sling.y, vx: aim.vx, vy: aim.vy, gravity: .22 };
+    let frames = 0;
+    function step() {
+      if (!projectile) return;
+      projectile.x += projectile.vx; projectile.y += projectile.vy; projectile.vy += projectile.gravity; frames++;
+      const hit = touchesCharacter(projectile.x, projectile.y, right.x);
+      if (hit || projectile.x > 1800 || projectile.y >= ground - 9 || frames > 180) {
+        projectile = null; draw();
+        finishThrow(hit, aim.power, 'player');
+        return;
+      }
+      draw(); animation = requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  function rivalShotHits(deg, pct) {
+    const rad = deg * Math.PI / 180, dir = -1;
+    const speed = 4.0 + (pct / 100) * 19.5;
+    let x = right.x + dir * 25, y = ground - 61;
+    let vx = dir * speed * Math.cos(rad), vy = -speed * Math.sin(rad);
+    for (let frame = 0; frame < 180; frame++) {
+      x += vx; y += vy; vy += .22;
+      if (touchesCharacter(x, y, left.x)) return true;
+      if (y >= ground - 9 || x < 0 || x > 1800) return false;
+    }
+    return false;
+  }
+
+  function chooseRivalThrow() {
+    const SKILL = 0.62;
+    const HIT_ATTEMPT = Math.random() < SKILL;
+
+    if (HIT_ATTEMPT) {
+      let best = null;
+      for (let a = 15; a <= 75; a += 3) {
+        for (let p = 30; p <= 100; p += 4) {
+          if (rivalShotHits(a, p)) {
+            const naturalness = 1 - Math.abs(p - 65) / 70;
+            const score = naturalness + Math.random() * 0.3;
+            if (!best || score > best.score) best = { a, p, score };
+          }
+        }
+      }
+      if (best) {
+        const angleErr = (Math.random() - 0.5) * 12;
+        const powerErr = (Math.random() - 0.5) * 16;
+        return {
+          a: Math.max(10, Math.min(80, best.a + angleErr)),
+          p: Math.max(20, Math.min(100, best.p + powerErr))
+        };
+      }
+    }
+
+    for (let tries = 0; tries < 60; tries++) {
+      const a = 15 + Math.random() * 60;
+      const p = 25 + Math.random() * 75;
+      if (!rivalShotHits(a, p)) return { a, p };
+    }
+    return { a: 30, p: 40 };
+  }
+
+  function aiThrow() {
+    aiTimer = null;
+    if (ended || rivalThrows <= 0 || turn !== 'rival') return;
+    waiting = true; updateHud();
+    message.textContent = t('duelLiningUp');
+
+    const choice = chooseRivalThrow();
+
+    aiInnerTimer = setTimeout(() => {
+      aiInnerTimer = null;
+      if (ended || turn !== 'rival') return;
+      rivalThrows--; updateHud(); waiting = false;
+      fly(right, left, choice.a, choice.p, hit => finishThrow(hit, choice.p, 'rival'));
+    }, 500);
+  }
+
+  function finishThrow(hit, pct, who) {
+    waiting = false;
+    if (hit) {
+      const damage = Math.max(8, Math.round(12 + pct * 0.28));
+      if (who === 'player') rivalHP = Math.max(0, rivalHP - damage);
+      else playerHP = Math.max(0, playerHP - damage);
+      message.textContent = who === 'player' ? t('duelHitYou', damage) : t('duelHitMe', damage);
+    } else {
+      message.textContent = who === 'player' ? t('duelMissYou') : t('duelMissRival');
+    }
+
+    if (playerHP <= 0 || rivalHP <= 0) {
+      ended = true;
+      message.textContent = playerHP > 0 ? t('duelVictory') : t('duelDefeat');
+    } else if (playerThrows <= 0 && rivalThrows <= 0) {
+      ended = true;
+      message.textContent = playerHP === rivalHP
+        ? t('duelDraw')
+        : (playerHP > rivalHP ? t('duelWinHP') : t('duelLoseHP'));
+    } else if (who === 'player') {
+      turn = rivalThrows > 0 ? 'rival' : 'player';
+    } else {
+      turn = playerThrows > 0 ? 'player' : 'rival';
+    }
+
+    updateHud(); draw();
+
+    if (!ended && turn === 'rival') {
+      aiTimer = setTimeout(aiThrow, 850);
+    }
+  }
+
+  function fly(from, to, deg, pct, onLand) {
+    const rad = deg * Math.PI / 180, dir = Math.sign(to.x - from.x);
+    const speed = 4.0 + (pct / 100) * 19.5;
+    projectile = {
+      x: from.x + dir * 25, y: ground - 61,
+      vx: dir * speed * Math.cos(rad),
+      vy: -speed * Math.sin(rad),
+      gravity: .22
+    };
+    let frames = 0;
+    function step() {
+      if (!projectile) return;
+      projectile.x += projectile.vx; projectile.y += projectile.vy; projectile.vy += projectile.gravity; frames++;
+      const hit = touchesCharacter(projectile.x, projectile.y, to.x);
+      if (hit || projectile.y >= ground - 9 || projectile.x < 0 || projectile.x > 1800 || frames > 180) {
+        projectile = null; draw(); onLand(hit, frames); return;
+      }
+      draw(); animation = requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  function canvasPoint(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * canvas.width / r.width, y: (e.clientY - r.top) * canvas.height / r.height };
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (ended || waiting || turn !== 'player' || projectile) return;
+    const pt = canvasPoint(e);
+    if (Math.hypot(pt.x - sling.x, pt.y - sling.y) > 38) return;
+    dragging = true; dragPointerId = e.pointerId; dragPoint = pt;
+    canvas.classList.add('dragging');
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* pointer may already be gone (mobile edge case) */ }
+    message.textContent = t('duelKeepDragging');
+    draw(); e.preventDefault();
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if (!dragging || e.pointerId !== dragPointerId) return;
+    const pt = canvasPoint(e);
+    let dx = pt.x - sling.x, dy = pt.y - sling.y;
+    dx = Math.min(-8, dx);
+    const len = Math.hypot(dx, dy);
+    if (len > 160) { dx *= 160 / len; dy *= 160 / len; }
+    dragPoint = { x: sling.x + dx, y: sling.y + dy };
+    draw(); e.preventDefault();
+  });
+
+  function releaseDrag(e) {
+    if (!dragging || e.pointerId !== dragPointerId) return;
+    dragging = false; dragPointerId = null;
+    canvas.classList.remove('dragging');
+    const aim = getAim(); dragPoint = null;
+    if (aim && aim.len >= 18) {
+      flyDragged(aim);
+    } else {
+      message.textContent = t('duelPullMore');
+      draw();
+    }
+    e.preventDefault();
+  }
+  canvas.addEventListener('pointerup', releaseDrag);
+  canvas.addEventListener('pointercancel', releaseDrag);
+
+  document.getElementById('duelRestart').addEventListener('click', reset);
+  document.getElementById('duelBack').addEventListener('click', () => setMode('pick'));
+  document.getElementById('chooseDefense').addEventListener('click', () => setMode('defense'));
+  document.getElementById('chooseDuel').addEventListener('click', () => setMode('duel'));
+
+  playerHP = 100; rivalHP = 100;
+  playerThrows = MAX_THROWS; rivalThrows = MAX_THROWS;
+  turn = 'player'; ended = false; waiting = false;
+  updateHud(); draw();
+
+  window.__duelLangRefresh = function () {
+    if (!ended && !projectile && !waiting && turn === 'player') message.textContent = t('duelAimDefault');
+    draw();
+  };
+})();
+</script>
+
+<script>
+// ============================================================
+// MAZE ADVENTURE — Growing Tree labyrinth (50/50 DFS + Prim's mix)
+// Portal is placed at the BFS-farthest cell, so the route is the
+// longest one the maze offers and is surrounded by tempting dead ends
+// ============================================================
+(() => {
+  const picker = document.getElementById('modePicker'), maze = document.getElementById('mazeGame'), duel = document.getElementById('rockDuel');
+  const tdSelectors = ['#title','.hero-card','#hud','#canvasWrap','#shop','#controls','#hint'];
+  const tdNodes = tdSelectors.map(sel => document.querySelector(sel));
+  const canvas = document.getElementById('mazeCanvas'), c = canvas.getContext('2d');
+  const levelText = document.getElementById('mazeLevelText'), starsText = document.getElementById('mazeStars'),
+        timeText = document.getElementById('mazeTime'), msg = document.getElementById('mazeMessage'),
+        nextBtn = document.getElementById('mazeNext'), levelGrid = document.getElementById('mazeLevels');
+
+  const palettes = [
+    ['#202e46','#5e7891'],['#252044','#8972bd'],['#182f3b','#52b9bd'],['#3c2441','#ed8ab5'],['#263c63','#b4d8ff'],
+    ['#4a2d38','#f3a56f'],['#173a37','#79cba5'],['#20384f','#a7e8ff'],['#25234d','#b9a3ff'],['#351f48','#ff9fc9']
+  ];
+
+  let level = 0, cleared = 0, totalStars = 0, start = Date.now(), won = false;
+  let cols = 0, rows = 0, cellSize = 0;
+  let cells = [];
+  let solutionPath = [];
+  const DELTA = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
+  const OPP = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' };
+  let player = { x: 0, y: 0 };
+  let end = { x: 0, y: 0 };
+  let trail = [];
+  let moveCount = 0;
+
+  class CellA {
+    constructor(x, y) {
+      this.x = x; this.y = y;
+      this.visited = false;
+      this.walls = { top: true, right: true, bottom: true, left: true };
+    }
+    show() {
+      const px = this.x * cellSize, py = this.y * cellSize;
+      c.beginPath();
+      if (this.walls.top)    { c.moveTo(px, py);          c.lineTo(px + cellSize, py); }
+      if (this.walls.right)  { c.moveTo(px + cellSize, py); c.lineTo(px + cellSize, py + cellSize); }
+      if (this.walls.bottom) { c.moveTo(px + cellSize, py + cellSize); c.lineTo(px, py + cellSize); }
+      if (this.walls.left)   { c.moveTo(px, py + cellSize); c.lineTo(px, py); }
+      c.strokeStyle = '#7fa347';
+      c.lineWidth = Math.max(2.5, Math.min(5, cellSize * 0.18));
+      c.lineCap = 'round';
+      c.stroke();
+    }
+  }
+
+  function buildGrid() {
+    cells = [];
+    for (let x = 0; x < cols; x++) {
+      cells[x] = [];
+      for (let y = 0; y < rows; y++) {
+        cells[x][y] = new CellA(x, y);
+      }
+    }
+  }
+
+  // Growing Tree carver: each step picks either the newest active cell
+  // (DFS behaviour → long winding corridors that lead nowhere) or a random
+  // active cell (Prim's behaviour → bushy branching, tons of dead ends).
+  // The 50/50 mix is what makes these labyrinths genuinely confusing —
+  // a plain recursive backtracker leaves one fairly direct highway.
+  function carveMaze() {
+    buildGrid();
+    const first = cells[0][0];
+    first.visited = true;
+    const active = [first];
+    while (active.length) {
+      const idx = Math.random() < 0.5
+        ? active.length - 1
+        : Math.floor(Math.random() * active.length);
+      const cell = active[idx];
+      const options = [];
+      for (const dir of ['top', 'right', 'bottom', 'left']) {
+        const nx = cell.x + DELTA[dir][0], ny = cell.y + DELTA[dir][1];
+        if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !cells[nx][ny].visited) {
+          options.push([dir, nx, ny]);
+        }
+      }
+      if (!options.length) { active.splice(idx, 1); continue; }
+      const [dir, nx, ny] = options[Math.floor(Math.random() * options.length)];
+      cell.walls[dir] = false;
+      cells[nx][ny].walls[OPP[dir]] = false;
+      cells[nx][ny].visited = true;
+      active.push(cells[nx][ny]);
+    }
+  }
+
+  // BFS over open walls → distance map + parent pointers from (sx, sy).
+  function bfsFrom(sx, sy) {
+    const dist = Array.from({ length: cols }, () => Array(rows).fill(-1));
+    const prev = Array.from({ length: cols }, () => Array(rows).fill(null));
+    dist[sx][sy] = 0;
+    const queue = [[sx, sy]];
+    for (let head = 0; head < queue.length; head++) {
+      const [x, y] = queue[head], cell = cells[x][y];
+      for (const dir of ['top', 'right', 'bottom', 'left']) {
+        if (cell.walls[dir]) continue;
+        const nx = x + DELTA[dir][0], ny = y + DELTA[dir][1];
+        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows || dist[nx][ny] !== -1) continue;
+        dist[nx][ny] = dist[x][y] + 1;
+        prev[nx][ny] = [x, y];
+        queue.push([nx, ny]);
+      }
+    }
+    return { dist, prev };
+  }
+
+  function setup() {
+    // Generate several candidate mazes and keep the one whose farthest
+    // reachable cell is deepest in. The portal goes on that farthest cell,
+    // so the solution is guaranteed to be the longest route available.
+    const target = Math.floor(cols * rows * 0.35);
+    let bestWalls = null, bestEnd = null, bestPrev = null, bestDepth = -1;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      carveMaze();
+      const { dist, prev } = bfsFrom(0, 0);
+      let fx = 0, fy = 0;
+      for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows; y++) {
+          if (dist[x][y] > dist[fx][fy]) { fx = x; fy = y; }
+        }
+      }
+      if (dist[fx][fy] > bestDepth) {
+        bestDepth = dist[fx][fy];
+        bestEnd = { x: fx, y: fy };
+        bestWalls = cells.map(row => row.map(cell => ({ ...cell.walls })));
+        bestPrev = prev;
+      }
+      if (bestDepth >= target) break;
+    }
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        cells[x][y].walls = bestWalls[x][y];
+        cells[x][y].visited = true;
+      }
+    }
+    end = bestEnd;
+    solutionPath = [];
+    let cur = [end.x, end.y];
+    while (cur) {
+      solutionPath.push({ x: cur[0], y: cur[1] });
+      cur = bestPrev[cur[0]][cur[1]];
+    }
+    solutionPath.reverse();
+  }
+
+  function renderLevels() {
+    levelGrid.innerHTML = '';
+    for (let i = 0; i < 10; i++) {
+      const b = document.createElement('button');
+      b.textContent = (i < cleared ? '✓ ' : '') + (i+1) + (i < cleared ? ' ⭐' : '');
+      b.disabled = i > cleared;
+      b.title = mazeName(i);
+      b.style.borderColor = i === level ? '#ff9fc9' : '';
+      b.addEventListener('click', () => { level = i; newMazeForLevel(); });
+      levelGrid.appendChild(b);
+    }
+  }
+
+  function updateHud() {
+    levelText.textContent = (level+1) + ' / 10';
+    starsText.textContent = totalStars;
+    nextBtn.disabled = !won || level >= 9;
+  }
+
+  function newMazeForLevel() {
+    cols = Math.min(34, 15 + level * 2);
+    rows = Math.min(26, 11 + level * 2);
+    cellSize = Math.min(30 + level * 2, Math.floor((canvas.width - 16) / cols), Math.floor((canvas.height - 16) / rows));
+    player = { x: 0, y: 0 };
+    trail = [{ x: 0, y: 0 }];
+    moveCount = 0;
+    won = false;
+    start = Date.now();
+    setup();
+    msg.textContent = t('mazeNavMsg');
+    draw();
+    renderLevels();
+    updateHud();
+  }
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    const bg = c.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, palettes[level][0]);
+    bg.addColorStop(1, '#111426');
+    c.fillStyle = bg;
+    c.fillRect(0, 0, W, H);
+
+    const totalW = cols * cellSize, totalH = rows * cellSize;
+    const ox = (W - totalW) / 2, oy = (H - totalH) / 2;
+    c.save();
+    c.translate(ox, oy);
+
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        cells[x][y].show();
+      }
+    }
+
+    c.beginPath();
+    for (let i = 0; i < trail.length; i++) {
+      const tx = trail[i].x * cellSize + cellSize / 2;
+      const ty = trail[i].y * cellSize + cellSize / 2;
+      if (i === 0) c.moveTo(tx, ty); else c.lineTo(tx, ty);
+    }
+    c.lineCap = 'round';
+    c.strokeStyle = 'rgba(255,255,255,0.85)';
+    c.lineWidth = 4;
+    c.stroke();
+
+    const ex = (end.x + 0.5) * cellSize, ey = (end.y + 0.5) * cellSize;
+    c.shadowColor = '#8effe0'; c.shadowBlur = 18;
+    c.fillStyle = '#75ffe0';
+    c.beginPath(); c.arc(ex, ey, cellSize * 0.32, 0, Math.PI * 2); c.fill();
+    c.shadowBlur = 0;
+    c.font = `${cellSize*0.6}px "Apple Color Emoji","Segoe UI Emoji",sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('🌀', ex, ey);
+
+    const px = player.x * cellSize + cellSize / 2;
+    const py = player.y * cellSize + cellSize / 2;
+    c.save();
+    c.translate(px, py);
+    const u = cellSize * 0.42;
+    c.fillStyle = '#30203f';
+    c.beginPath(); c.ellipse(0, -u*0.13, u*0.62, u*0.76, 0, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#ffd8ca';
+    c.beginPath(); c.ellipse(0, -u*0.08, u*0.40, u*0.49, 0, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#30203f';
+    c.beginPath(); c.moveTo(-u*0.42, -u*0.27);
+    c.quadraticCurveTo(-u*0.35, -u*0.98, 0, -u*0.72);
+    c.quadraticCurveTo(u*0.5, -u*0.84, u*0.43, -u*0.25);
+    c.lineTo(u*0.19, -u*0.39);
+    c.quadraticCurveTo(0, -u*0.15, -u*0.34, -u*0.3);
+    c.fill();
+    c.fillStyle = '#30203f';
+    c.beginPath(); c.ellipse(-u*0.16, -u*0.04, u*0.075, u*0.14, -0.1, 0, Math.PI*2);
+    c.ellipse(u*0.16, -u*0.04, u*0.075, u*0.14, 0.1, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#fff';
+    c.beginPath(); c.arc(-u*0.18, -u*0.09, u*0.035, 0, Math.PI*2);
+    c.arc(u*0.14, -u*0.09, u*0.035, 0, Math.PI*2); c.fill();
+    c.fillStyle = '#ff82aa';
+    c.beginPath(); c.ellipse(-u*0.28, u*0.12, u*0.10, u*0.045, 0, 0, Math.PI*2);
+    c.ellipse(u*0.28, u*0.12, u*0.10, u*0.045, 0, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#bf4e82'; c.lineWidth = Math.max(0.7, cellSize * 0.035);
+    c.beginPath(); c.arc(0, u*0.09, u*0.085, 0.15, Math.PI - 0.15); c.stroke();
+    c.fillStyle = '#ff5fa8';
+    c.beginPath(); c.moveTo(u*0.24, -u*0.61); c.lineTo(u*0.55, -u*0.75); c.lineTo(u*0.48, -u*0.47);
+    c.lineTo(u*0.24, -u*0.52); c.closePath(); c.fill();
+    c.fillStyle = '#ffe9a8';
+    c.beginPath(); c.arc(u*0.32, -u*0.57, u*0.055, 0, Math.PI*2); c.fill();
+    c.restore();
+
+    c.restore();
+
+    if (won) {
+      c.fillStyle = '#101326d9';
+      c.fillRect(0, 0, W, H);
+      c.fillStyle = '#fff';
+      c.textAlign = 'center';
+      c.font = 'bold 36px system-ui';
+      c.fillText(level === 9 ? t('canvasMazeMaster') : t('canvasLevelCleared'), W/2, H/2 - 12);
+      c.font = '20px system-ui';
+      c.fillText(level === 9 ? t('canvasStarKingdom') : t('canvasWellDone'), W/2, H/2 + 28);
+    }
+  }
+
+  function movePlayer(dir) {
+    if (won) return;
+    const cell = cells[player.x][player.y];
+    let valid = false;
+    switch (dir) {
+      case 'ArrowUp':
+        if (player.y > 0 && !cell.walls.top) { player.y--; valid = true; }
+        break;
+      case 'ArrowDown':
+        if (player.y < rows - 1 && !cell.walls.bottom) { player.y++; valid = true; }
+        break;
+      case 'ArrowLeft':
+        if (player.x > 0 && !cell.walls.left) { player.x--; valid = true; }
+        break;
+      case 'ArrowRight':
+        if (player.x < cols - 1 && !cell.walls.right) { player.x++; valid = true; }
+        break;
+    }
+    if (!valid) return;
+
+    moveCount++;
+    trail.push({ x: player.x, y: player.y });
+
+    if (player.x === end.x && player.y === end.y) {
+      won = true;
+      cleared = Math.max(cleared, level + 1);
+      totalStars += 1;
+      msg.textContent = level === 9 ? t('mazeAllDone') : t('mazeLevelDone');
+      renderLevels();
+      updateHud();
+    }
+    draw();
+  }
+
+  document.getElementById('btnUp').addEventListener('click', () => movePlayer('ArrowUp'));
+  document.getElementById('btnDown').addEventListener('click', () => movePlayer('ArrowDown'));
+  document.getElementById('btnLeft').addEventListener('click', () => movePlayer('ArrowLeft'));
+  document.getElementById('btnRight').addEventListener('click', () => movePlayer('ArrowRight'));
+
+  window.addEventListener('keydown', e => {
+    if (maze.classList.contains('hidden')) return;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      movePlayer(e.key);
+    }
+  });
+
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', e => {
+    if (!touchStart || e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) movePlayer(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+    else movePlayer(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+    touchStart = null;
+  });
+
+  document.getElementById('chooseMaze').addEventListener('click', () => {
+    picker.classList.add('hidden'); duel.classList.add('hidden');
+    tdNodes.forEach(n => { if (n) n.style.display = 'none'; });
+    maze.classList.remove('hidden');
+    newMazeForLevel();
+  });
+  document.getElementById('mazeBack').addEventListener('click', () => {
+    maze.classList.add('hidden'); picker.classList.remove('hidden');
+  });
+  document.getElementById('mazeRestart').addEventListener('click', newMazeForLevel);
+  nextBtn.addEventListener('click', () => {
+    if (won && level < 9) { level++; newMazeForLevel(); }
+  });
+
+  setInterval(() => {
+    if (!maze.classList.contains('hidden') && !won) {
+      const sec = Math.floor((Date.now()-start)/1000);
+      timeText.textContent = Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0');
+    }
+  }, 500);
+
+  // Lightweight QA hook: difficulty metrics + level jump for automated tests.
+  window.__mazeInfo = {
+    info() {
+      let deadEnds = 0, junctions = 0;
+      for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows; y++) {
+          const w = cells[x][y].walls;
+          const open = 4 - (w.top + w.right + w.bottom + w.left);
+          if (open === 1) deadEnds++;
+          if (open >= 3) junctions++;
+        }
+      }
+      return { level, cols, rows, cellCount: cols * rows, end, solutionLength: solutionPath.length, deadEnds, junctions };
+    },
+    walls() { return cells.map(col => col.map(cell => ({ ...cell.walls }))); },
+    goto(n) { level = Math.max(0, Math.min(9, n)); newMazeForLevel(); return this.info(); }
+  };
+
+  window.__mazeLangRefresh = function () {
+    renderLevels();
+    if (maze.classList.contains('hidden')) return;
+    msg.textContent = won ? (level === 9 ? t('mazeAllDone') : t('mazeLevelDone')) : t('mazeNavMsg');
+    if (cols > 0) draw();
+  };
+
+  renderLevels();
+})();
+</script>
+
+</body>
+</html>
